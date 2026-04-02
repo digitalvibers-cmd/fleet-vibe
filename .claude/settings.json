@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la \"/Users/buco/Desktop/Antygravity apps/Fleet Vibe\"/*.json)",
+      "Read(//Users/buco/Desktop/Antygravity apps/Fleet Vibe/**)",
+      "Bash(docker compose:*)"
+    ]
+  }
+}

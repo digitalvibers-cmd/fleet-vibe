@@ -1,0 +1,47 @@
+<div
+    class="place-autocomplete-input {{if this.hasSelection 'has-selection'}} {{if this.isDisabled 'is-disabled'}} {{@wrapperClass}}"
+    {{did-insert this.setupAutocomplete}}
+    {{will-destroy this.teardownAutocomplete}}
+>
+    {{#if this.hasSelection}}
+        <div class="place-autocomplete-input__selected">
+            <div class="place-autocomplete-input__selected-icon">
+                <FaIcon @icon="map-marker-alt" @prefix="fas" />
+            </div>
+            <div class="place-autocomplete-input__selected-address" title={{this.displayAddress}}>
+                {{this.displayAddress}}
+            </div>
+            {{#unless this.isDisabled}}
+                <button
+                    type="button"
+                    class="place-autocomplete-input__clear-btn"
+                    {{on "click" this.clearSelection}}
+                    title="Clear selection"
+                >
+                    <FaIcon @icon="times" @prefix="fas" />
+                </button>
+            {{/unless}}
+        </div>
+    {{else}}
+        <div class="place-autocomplete-input__search-wrapper">
+            <div class="place-autocomplete-input__search-icon">
+                <FaIcon @icon="search" @prefix="fas" />
+            </div>
+            <input
+                type="text"
+                class="place-autocomplete-input__search form-input"
+                placeholder={{this.placeholderText}}
+                disabled={{this.isDisabled}}
+                autocomplete="off"
+                {{on "focus" this.onFocus}}
+                {{on "blur" this.onBlur}}
+                {{on "input" this.onInput}}
+            />
+            {{#if this.isLoading}}
+                <div class="place-autocomplete-input__loading">
+                    <Spinner @iconClass="text-sky-500 fa-spin-800ms" />
+                </div>
+            {{/if}}
+        </div>
+    {{/if}}
+</div>
