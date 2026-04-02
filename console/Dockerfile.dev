@@ -1,0 +1,54 @@
+# ---- Development Build Stage ----
+# This Dockerfile builds the console with LOCAL fleetops-engine package.
+# Build context must be the project root (set in docker-compose.override.yml).
+FROM node:18.15.0-alpine as builder
+
+WORKDIR /console
+
+# Create the pnpm directory
+RUN mkdir -p ~/.pnpm
+ENV PNPM_HOME=/root/.pnpm
+ENV PATH=/root/.pnpm/bin:$PATH
+
+# Set environment
+ARG ENVIRONMENT=development
+
+# Copy console package files first (for layer caching)
+COPY console/package.json console/pnpm-lock.yaml ./
+COPY console/.npmr[c] ./
+
+# Install global dependencies
+RUN npm install -g ember-cli pnpm
+
+# Install git
+RUN apk update && apk add git openssh-client
+RUN mkdir -p -m 0600 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+# Install app dependencies from npm
+RUN pnpm install
+
+# Now overlay the local fleetops-engine source on top of the npm-installed version.
+# pnpm uses a symlink structure: node_modules/@fleetbase/fleetops-engine -> .pnpm/…
+# We must copy into the REAL directory (the symlink target), not the symlink path,
+# otherwise Docker creates a new dir and the symlink's original target stays unchanged.
+COPY packages/fleetops/addon/ /tmp/_fleetops_addon/
+COPY packages/fleetops/app/   /tmp/_fleetops_app/
+RUN REAL_PATH=$(readlink -f node_modules/@fleetbase/fleetops-engine) && \
+    echo "Overlaying local fleetops into: $REAL_PATH" && \
+    cp -r /tmp/_fleetops_addon/* "$REAL_PATH/addon/" && \
+    cp -r /tmp/_fleetops_app/*   "$REAL_PATH/app/" && \
+    rm -rf /tmp/_fleetops_addon /tmp/_fleetops_app
+
+# Copy the full console source
+COPY console/ .
+
+# Build the application
+RUN pnpm build --environment $ENVIRONMENT
+
+# ---- Serve Stage ----
+FROM nginx:alpine
+
+COPY --from=builder /console/dist /usr/share/nginx/html
+EXPOSE 4200
+COPY console/nginx.conf /etc/nginx/conf.d/default.conf
+CMD ["nginx", "-g", "daemon off;"]
