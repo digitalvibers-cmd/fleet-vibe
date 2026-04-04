@@ -102,13 +102,21 @@ php artisan test             # PHPUnit tests (phpunit.xml)
 
 ## Submodule Workflow
 
-Most business logic lives in `packages/` submodules, not directly in `api/` or `console/`. When modifying extension behavior (fleet operations, storefront, IAM, etc.), the relevant submodule is where changes go. The main repo pins submodule commits — after updating a submodule, the pointer in the parent repo needs updating too.
+Most business logic lives in `packages/` submodules, not directly in `api/` or `console/`. When modifying extension behavior (storefront, IAM, etc.), the relevant submodule is where changes go. The main repo pins submodule commits — after updating a submodule, the pointer in the parent repo needs updating too.
+
+**Exception — `packages/fleetops/` is embedded, not a submodule.** It is tracked as regular files in the parent repo so the local Docker overlay (see below) can customize it. This means upstream Fleetbase syncs for fleetops are done by manually copying files into `packages/fleetops/`, which **will overwrite any local edits in that directory**. Do NOT put LogiVibe-specific overrides inside `packages/fleetops/`. Put them in `console/app/styles/` (CSS), in a custom extension, or in `console/app/` directly.
+
+## Where to Put Local Overrides (so upstream syncs don't break them)
+
+- **CSS overrides for Fleetbase components**: `console/app/styles/console.css`. It is part of the main Ember bundle, loads globally, and lives outside `packages/`. Example: the mobile responsiveness fix for `.next-content-overlay-panel` lives here.
+- **New UI behavior**: a custom Ember extension (see "Custom Extensions" below), not a patch to `packages/ember-ui/` or `packages/fleetops/`.
+- **API overrides**: a custom Laravel package, not a patch to `packages/core-api/`.
 
 ## Docker Console Build — pnpm Symlink Caveat
 
 `console/Dockerfile.dev` overlays local `packages/fleetops/` files on top of the npm-installed `@fleetbase/fleetops-engine`. Because pnpm uses a symlink store (`node_modules/@fleetbase/fleetops-engine` → `.pnpm/…/node_modules/@fleetbase/fleetops-engine`), files must be copied into the **resolved real path** (`readlink -f`), not the symlink path. A plain `COPY ... node_modules/@fleetbase/fleetops-engine/` creates a new directory alongside the symlink and the engine's actual package remains unchanged.
 
-After changing files in `packages/fleetops/`, rebuild with `docker compose build --no-cache console` to ensure Docker doesn't serve cached layers.
+After changing files in `packages/fleetops/` **or** `console/app/`, rebuild with `docker compose build --no-cache console` to ensure Docker doesn't serve cached layers.
 
 ## Ember Engine Gotchas (fleetops-engine)
 
@@ -125,3 +133,72 @@ Set via `docker-compose.override.yml` or container environment:
 - `BROADCAST_DRIVER` — `socketcluster` for real-time features
 - `REGISTRY_HOST` — Fleetbase extension registry
 - `OSRM_HOST` — Routing engine for fleet operations
+
+## LogiVibe — Project Context
+
+This repository is **LogiVibe**, an internal logistics operations system for **FlyBox Delivery**, built on top of the Fleetbase open-source platform. It is NOT a multi-tenant SaaS — it is a single-tenant internal tool for managing orders, dispatching, drivers, and real-time tracking within one company.
+
+Key project documents:
+- `Strategy` — Strategic plan and product vision
+- `ROADMAP.md` — Task tracker with progress checkboxes across 3 phases
+
+## Branching & Deployment Strategy
+
+| Branch | Environment | Domain | Notes |
+|--------|------------|--------|-------|
+| `dev` | **Development** | `fleetvibe.digitalvibe.rs` | Active development, auto-deploy on push |
+| `main` | **Production** | `fleetvibe.flyboxdelivery.rs` | Stable releases only, auto-deploy on push, protected with basic auth |
+
+**Rules:**
+- All development work happens on `dev` or feature branches merged into `dev`.
+- `main` only receives merges from `dev` when a release is ready.
+- CI/CD (GitHub Actions) deploys automatically:
+  - Push to `dev` → deploy to dev server
+  - Push to `main` → deploy to production server
+- Production domain has **basic auth** protection in front of Nginx.
+
+## Environments
+
+### Development
+- **Console**: `https://fleetvibe.digitalvibe.rs`
+- **API**: `https://apifleetvibe.digitalvibe.rs`
+- No basic auth, open for testing
+
+### Production (configured at go-live)
+- **Console**: `https://fleetvibe.flyboxdelivery.rs` (basic auth required)
+- **API**: `https://apifleetvibe.flyboxdelivery.rs`
+
+## Infrastructure
+
+- **Hosting**: Hetzner Cloud, Falkenstein datacenter (Germany, EU)
+- **Server**: CPX31 — 4 vCPU (shared AMD), 8 GB RAM, 160 GB NVMe SSD
+- **OS**: Ubuntu 22.04 LTS
+- **Reverse Proxy**: Nginx with Let's Encrypt SSL
+- **Backups**: Hetzner Automated Backups + MySQL dump cron (every 6h)
+- **Monitoring**: Sentry (error tracking) + UptimeRobot (uptime) + Hetzner alerts
+
+## Customer Portal
+
+A separate custom frontend application (`customer-portal/`) where FlyBox Delivery's clients can:
+- Log in with their own credentials
+- Create new delivery requests
+- View list of their previous orders (ONLY their own — data isolation by customer_id)
+- Track delivery status
+
+The portal communicates with the Fleetbase API layer. Data isolation is critical — a client must never see another client's orders.
+
+## Custom Extensions
+
+LogiVibe builds proprietary Fleetbase extensions to add functionality without modifying core:
+- **logivibe-analytics** — Ember Engine for KPI dashboards, operational reports, driver scoring
+- Extensions follow the Fleetbase pattern: Ember Engine (frontend) + Laravel package (backend)
+- Use `fleetbase extension:make` CLI to scaffold new extensions
+- Keep core Fleetbase modifications to an absolute minimum to allow upstream updates
+
+## Development Guidelines
+
+1. **Minimize core changes**: Prefer extensions over modifying `packages/` submodules. If a core change is unavoidable, document it clearly.
+2. **Configuration via UI**: User roles, permissions, order statuses, places, and vehicles are managed through the Fleetbase console UI — do not create seeders for these.
+3. **User creation**: Done at the end of each phase, manually through UI.
+4. **Test on dev first**: Always deploy and verify on `fleetvibe.digitalvibe.rs` before merging to `main`.
+5. **Docker parity**: Local dev and server both use Docker Compose. Production uses `docker-compose.prod.yml` as override.
