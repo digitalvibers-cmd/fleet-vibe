@@ -72,24 +72,45 @@ export default class PlaceAutocompleteInputComponent extends Component {
     }
 
     @action
-    async setupAutocomplete(element) {
-        this._inputElement = element.querySelector('.place-autocomplete-input__search');
-        if (!this._inputElement) return;
-
+    async setupAutocomplete() {
         try {
             this.googleMaps = await loadGoogleMaps();
-            this.autocomplete = new this.googleMaps.places.Autocomplete(this._inputElement, {
-                types: ['address'],
-                fields: ['address_components', 'formatted_address', 'geometry', 'name', 'place_id'],
-            });
-
-            this.autocomplete.addListener('place_changed', () => {
-                this._handlePlaceChanged();
-            });
+            // If the input was already rendered before Maps loaded, bind it now
+            if (this._inputElement) {
+                this.bindInput(this._inputElement);
+            }
         } catch (error) {
             console.error('Failed to initialize Google Maps Autocomplete:', error);
             this.notifications.error('Failed to load Google Maps. Please try again.');
         }
+    }
+
+    @action
+    bindInput(inputElement) {
+        this._inputElement = inputElement;
+        if (!this.googleMaps) return;
+
+        // Clean up previous autocomplete listener
+        if (this.autocomplete) {
+            this.googleMaps.event?.clearInstanceListeners(this.autocomplete);
+            this.autocomplete = null;
+        }
+
+        this.autocomplete = new this.googleMaps.places.Autocomplete(inputElement, {
+            types: ['address'],
+            fields: ['address_components', 'formatted_address', 'geometry', 'name', 'place_id'],
+        });
+
+        this.autocomplete.addListener('place_changed', () => {
+            this._handlePlaceChanged();
+        });
+
+        // Auto-focus when the input re-appears (e.g. after clearing a selection)
+        later(this, () => {
+            if (this._inputElement) {
+                this._inputElement.focus();
+            }
+        }, 100);
     }
 
     @action
@@ -121,9 +142,6 @@ export default class PlaceAutocompleteInputComponent extends Component {
     @action
     clearSelection() {
         this.inputValue = '';
-        if (this._inputElement) {
-            this._inputElement.value = '';
-        }
 
         if (typeof this.args.onClear === 'function') {
             this.args.onClear();
@@ -131,13 +149,6 @@ export default class PlaceAutocompleteInputComponent extends Component {
         if (typeof this.args.onSelect === 'function') {
             this.args.onSelect(null);
         }
-
-        // Re-focus the input after clearing
-        later(this, () => {
-            if (this._inputElement) {
-                this._inputElement.focus();
-            }
-        }, 100);
     }
 
     /**

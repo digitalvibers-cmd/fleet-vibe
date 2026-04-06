@@ -33,6 +33,7 @@
                 placeholder={{this.placeholderText}}
                 disabled={{this.isDisabled}}
                 autocomplete="off"
+                {{did-insert this.bindInput}}
                 {{on "focus" this.onFocus}}
                 {{on "blur" this.onBlur}}
                 {{on "input" this.onInput}}
