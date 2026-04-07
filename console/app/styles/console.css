@@ -69,6 +69,24 @@ body[data-theme='dark'] #boot-loader > .loader-container > .loading-message {
 }
 
 /**
+ * Mobile navbar: always rendered now (no ember-responsive JS guard), hidden
+ * on desktop via CSS. This replaces the {{#if (media "isMobile")}} wrapper
+ * that caused a race condition where the navbar sometimes failed to appear.
+ *
+ * !important overrides the base .next-mobile-navbar { display: flex } in
+ * packages/ember-ui/addon/styles/layout/next.css.
+ */
+.next-mobile-navbar {
+    display: none !important;
+}
+
+@media (max-width: 767px) {
+    .next-mobile-navbar {
+        display: flex !important;
+    }
+}
+
+/**
  * Mobile fix: force resource panel overlays to full viewport width on phones.
  *
  * Without !important, the inline style="width: 530px" that the Overlay
@@ -99,5 +117,25 @@ body[data-theme='dark'] #boot-loader > .loader-container > .loading-message {
     .next-content-overlay-panel-body,
     .next-content-overlay-panel .overlay-body {
         overflow-x: hidden;
+    }
+
+    /**
+     * Keep "Create new order" button pinned at top of sidebar on mobile.
+     *
+     * Without this, the button scrolls off-screen when the sidebar menu has
+     * many expanded sections (Operations, Resources, etc.). sticky keeps it
+     * visible while the rest of the sidebar content scrolls beneath it.
+     */
+    .next-sidebar .create-order-menu-button-wrapper {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        padding-top: 0.5rem;
+        padding-bottom: 0.25rem;
+        background-color: #111827; /* gray-900, matches dark sidebar bg */
+    }
+
+    body[data-theme='light'] .next-sidebar .create-order-menu-button-wrapper {
+        background-color: #f9fafb; /* gray-50, matches light sidebar bg */
     }
 }
