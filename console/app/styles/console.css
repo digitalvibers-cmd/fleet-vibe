@@ -80,26 +80,51 @@ body[data-theme='dark'] #boot-loader > .loader-container > .loading-message {
     display: none !important;
 }
 
-@media (max-width: 767px) {
-    .next-mobile-navbar {
-        display: flex !important;
-    }
-}
-
 /**
- * Mobile fix: force resource panel overlays to full viewport width on phones.
+ * ═══════════════════════════════════════════════════════════════════
+ * Mobile-only overrides (max-width: 767px)
  *
- * Without !important, the inline style="width: 530px" that the Overlay
- * component writes via the {{set-width}} modifier beats the @apply w-full
- * rule in packages/ember-ui/addon/styles/layout/mobile.css. The panel stays
- * 530px wide on ~390px viewports, its left edge is pushed off-screen, and
- * form labels (Type, Internal ID, Schedule, Customer, ...) get clipped.
- *
- * This override lives in console/app/styles/ (not in packages/fleetops/ or
- * packages/ember-ui/) so that upstream Fleetbase syncs cannot overwrite it.
+ * All LogiVibe mobile responsiveness fixes live here, outside
+ * packages/, so upstream Fleetbase syncs cannot overwrite them.
  * Breakpoint mirrors ember-ui/addon/styles/layout/mobile.css.
+ * ═══════════════════════════════════════════════════════════════════
  */
 @media (max-width: 767px) {
+
+    /* ── Mobile navbar: show + fix to bottom of viewport ─────────
+     *
+     * display: flex overrides the desktop "display: none" above.
+     * position: fixed anchors the bar to the viewport bottom so
+     * that no flex-layout issue, overflow:hidden, or 100vh child
+     * can push it off-screen.
+     */
+    .next-mobile-navbar {
+        display: flex !important;
+        position: fixed !important;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding-bottom: env(safe-area-inset-bottom, 0); /* iPhone home indicator */
+    }
+
+    /* ── Header: ensure it stays above overlays/content ────────── */
+    .fleetbase-next-container > header.next-view-header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+    }
+
+    /* ── Container: reserve space for the fixed navbar ─────────── */
+    .fleetbase-next-container {
+        padding-bottom: 4rem; /* matches .next-mobile-navbar h-16 */
+    }
+
+    /* ── Overlay panels: full viewport width ─────────────────────
+     *
+     * Without !important the inline style="width: 530px" that the
+     * {{set-width}} modifier writes beats the @apply w-full rule
+     * in ember-ui mobile.css.
+     */
     .next-content-overlay > .next-content-overlay-panel-container,
     .next-content-overlay.next-content-overlay-pos-right > .next-content-overlay-panel-container,
     .next-content-overlay.next-content-overlay-pos-left > .next-content-overlay-panel-container {
@@ -119,36 +144,83 @@ body[data-theme='dark'] #boot-loader > .loader-container > .loading-message {
         overflow-x: hidden;
     }
 
-    /**
-     * Keep "Create new order" button pinned at top of sidebar on mobile.
-     *
-     * Without this, the button scrolls off-screen when the sidebar menu has
-     * many expanded sections (Operations, Resources, etc.). sticky keeps it
-     * visible while the rest of the sidebar content scrolls beneath it.
-     */
+    /* ── Sidebar: sticky "Create new order" button ───────────── */
     .next-sidebar .create-order-menu-button-wrapper {
         position: sticky;
         top: 0;
         z-index: 10;
         padding-top: 0.5rem;
         padding-bottom: 0.25rem;
-        background-color: #111827; /* gray-900, matches dark sidebar bg */
+        background-color: #111827; /* gray-900 */
     }
 
     body[data-theme='light'] .next-sidebar .create-order-menu-button-wrapper {
-        background-color: #f9fafb; /* gray-50, matches light sidebar bg */
+        background-color: #f9fafb; /* gray-50 */
     }
 
-    /**
-     * Stack overlay panel header: title on top, action buttons below.
+    /* ── Subheader / tab-nav actions: show Import/Export + wrap ──
      *
-     * On narrow screens the fixed 57px single-row header can't fit both
-     * the title and action buttons (Create Order, Cancel, etc.). The
-     * buttons overflow past .fleetbase-next-container's overflow:hidden
-     * and become invisible — blocking order creation on mobile.
+     * Import and Export buttons use @wrapperClass="hidden md:flex"
+     * in tabular.hbs / tabular-actions.hbs, hiding them below 768px.
+     * Override here so all module actions (New, Import, Export) are
+     * accessible on mobile.
      *
-     * flex-wrap lets the .next-view-header-right section flow to a
-     * second row underneath the title.
+     * Two action containers exist depending on the page layout:
+     *  - .next-view-section-subheader-actions  (standard tabular)
+     *  - .tab-navigation-actions               (tab pages e.g. Contacts)
+     */
+    .next-view-section-subheader {
+        height: auto !important;
+        min-height: 57px;
+    }
+
+    .next-view-section-subheader > .next-view-section-subheader-actions {
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    /* ── Tab pages (Contacts, etc.): actions below tabs ──────────
+     *
+     * The .tab-list is a flex row with tabs on the left and
+     * .tab-navigation-actions on the right. On mobile, wrap
+     * so actions drop to a full-width row below the tabs.
+     *
+     * Three height constraints must be beaten:
+     *  - .next-view-section-subheader-fixed-height: 57px !important
+     *  - .tab-navigation[data-size='lg'] .tab-list: h-12 (Tailwind)
+     *  - .tab-navigation-actions: height: 100%
+     */
+    .tab-navigation[data-size] .tab-list,
+    .tab-navigation .tab-list.next-view-section-subheader-fixed-height {
+        flex-wrap: wrap;
+        height: auto !important;
+        min-height: 48px;
+    }
+
+    .tab-navigation .tab-navigation-actions {
+        flex: 0 0 100%;
+        height: auto;
+        border-top: 1px solid var(--tab-border-color);
+        padding: 0.375rem 0.5rem;
+    }
+
+    /* The wrapper div in contacts.hbs uses flex-row without wrap.
+     * Allow it to wrap so buttons flow to next line on narrow screens. */
+    .tab-navigation-actions > div {
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .next-view-section-subheader-actions span.btn-wrapper.hidden,
+    .tab-navigation-actions span.btn-wrapper.hidden {
+        display: inline-flex !important;
+    }
+
+    /* ── Overlay header: stack title + action buttons vertically ─
+     *
+     * The fixed 57px row can't fit both the title and buttons
+     * (Create Order, Cancel, etc.) on narrow screens. flex-wrap
+     * lets .next-view-header-right flow to a second row.
      */
     .next-content-overlay-panel-header {
         flex-wrap: wrap !important;
