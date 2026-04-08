@@ -138,4 +138,33 @@ body[data-theme='dark'] #boot-loader > .loader-container > .loading-message {
     body[data-theme='light'] .next-sidebar .create-order-menu-button-wrapper {
         background-color: #f9fafb; /* gray-50, matches light sidebar bg */
     }
+
+    /**
+     * Stack overlay panel header: title on top, action buttons below.
+     *
+     * On narrow screens the fixed 57px single-row header can't fit both
+     * the title and action buttons (Create Order, Cancel, etc.). The
+     * buttons overflow past .fleetbase-next-container's overflow:hidden
+     * and become invisible — blocking order creation on mobile.
+     *
+     * flex-wrap lets the .next-view-header-right section flow to a
+     * second row underneath the title.
+     */
+    .next-content-overlay-panel-header {
+        flex-wrap: wrap !important;
+        height: auto !important;
+        min-height: 57px;
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+    }
+
+    .next-content-overlay-panel-header .next-view-header-left {
+        flex: 1 1 auto !important;
+        min-width: 0;
+    }
+
+    .next-content-overlay-panel-header .next-view-header-right {
+        flex: 0 0 100% !important;
+        padding-top: 0.5rem;
+    }
 }
