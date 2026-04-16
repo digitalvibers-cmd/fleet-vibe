@@ -40,7 +40,9 @@ class CustomerContactObserver
 
             $user->changePassword($password);
 
-            Mail::to($user)->send(new CustomerCredentialsMail($password, $contact));
+            // Mail::to($user) can fail if the returned User object lacks email attribute;
+            // use the contact's email directly which we already validated is non-empty.
+            Mail::to($contact->email)->send(new CustomerCredentialsMail($password, $contact));
         } catch (\Throwable $e) {
             Log::error('CustomerContactObserver failed to send welcome email', [
                 'contact' => $contact->uuid ?? null,
