@@ -56,3 +56,10 @@ builds/osx/frankenphp
 *.dll
 *.so
 *.dylib
+# MCP config (contains API tokens)
+.mcp.json
+
+# Customer portal
+customer-portal/.next/
+customer-portal/.env.local
+customer-portal/node_modules/
