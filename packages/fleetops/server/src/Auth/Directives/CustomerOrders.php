@@ -16,6 +16,11 @@ class CustomerOrders implements Directive
             $query->orWhereHas('authenticatableCustomer', function ($query) use ($id) {
                 $query->where('user_uuid', $id);
             });
+            $query->orWhereHasMorph('customer', [\Fleetbase\FleetOps\Models\Vendor::class], function ($query) use ($id) {
+                $query->whereHas('personnels', function ($query) use ($id) {
+                    $query->where('contacts.user_uuid', $id);
+                });
+            });
         });
     }
 }
