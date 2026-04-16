@@ -92,6 +92,8 @@ class FleetOpsServiceProvider extends CoreServiceProvider
     public function boot()
     {
         $this->registerObservers();
+        // LogiVibe: register extra observer to auto-send welcome email to new customers
+        \Fleetbase\FleetOps\Models\Contact::observe(\Fleetbase\FleetOps\Observers\CustomerContactObserver::class);
         $this->registerCommands();
         $this->scheduleCommands(function ($schedule) {
             $schedule->command('fleetops:dispatch-orders')->everyMinute()->withoutOverlapping()->storeOutputInDb();
