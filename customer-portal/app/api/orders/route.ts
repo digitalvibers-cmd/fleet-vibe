@@ -32,17 +32,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Session expired" }, { status: 401 });
   }
 
-  const contact = await resolveCustomerContact(token, session.data.user);
-
   const { searchParams } = request.nextUrl;
   const params: Record<string, string> = {};
-
-  if (contact?.uuid) {
-    params.customer = contact.uuid;
-  } else {
-    // Non-customer users accessing the portal should not see any orders
-    return NextResponse.json({ orders: [], meta: { total: 0 } });
-  }
 
   // Forward supported query params
   if (searchParams.get("page")) params.page = searchParams.get("page")!;
