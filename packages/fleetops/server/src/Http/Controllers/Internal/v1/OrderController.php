@@ -496,8 +496,14 @@ class OrderController extends FleetOpsController
      */
     public function cancel(CancelOrderRequest $request)
     {
+        $id = $request->input('order');
+
         /** @var Order */
-        $order = Order::where('uuid', $request->input('order'))->first();
+        $order = Order::where('uuid', $id)->orWhere('public_id', $id)->first();
+
+        if (!$order) {
+            return response()->error('No order found to cancel.');
+        }
 
         $order->cancel();
 

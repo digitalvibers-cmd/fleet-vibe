@@ -31,9 +31,10 @@ export async function DELETE(
   }
 
   const { id } = await params;
-  const result = await fleetbaseApi(`orders/${id}`, {
-    method: "DELETE",
+  const result = await fleetbaseApi("orders/cancel", {
+    method: "PATCH",
     token,
+    body: { order: id },
   });
 
   if (!result.ok) {
