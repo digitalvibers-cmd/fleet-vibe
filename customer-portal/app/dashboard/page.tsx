@@ -53,6 +53,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -60,6 +61,7 @@ export default function DashboardPage() {
       const params = new URLSearchParams({ sort: "-created_at", limit: "50" });
       if (dateFrom) params.set("after", dateFrom);
       if (dateTo) params.set("before", dateTo);
+      if (searchQuery) params.set("query", searchQuery);
 
       const res = await fetch(`/api/orders?${params}`);
       if (res.status === 401) {
@@ -73,7 +75,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [dateFrom, dateTo, router]);
+  }, [dateFrom, dateTo, searchQuery, router]);
 
   useEffect(() => {
     fetchOrders();
@@ -109,6 +111,26 @@ export default function DashboardPage() {
               className="rounded-xl border border-border px-3 py-2 text-sm outline-none focus:border-primary"
             />
           </div>
+          <div className="flex-1 min-w-[200px]">
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Search by Order ID
+            </label>
+            <div className="relative">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <Search className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <input
+                type="text"
+                placeholder="Ex. FLE123..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") fetchOrders();
+                }}
+                className="w-full rounded-xl border border-border py-2 pl-10 pr-3 text-sm outline-none focus:border-primary"
+              />
+            </div>
+          </div>
           <button
             onClick={fetchOrders}
             className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm text-muted-foreground transition hover:bg-muted"
@@ -116,11 +138,12 @@ export default function DashboardPage() {
             <Search className="h-3.5 w-3.5" />
             Filter
           </button>
-          {(dateFrom || dateTo) && (
+          {(dateFrom || dateTo || searchQuery) && (
             <button
               onClick={() => {
                 setDateFrom("");
                 setDateTo("");
+                setSearchQuery("");
               }}
               className="text-sm text-primary hover:underline"
             >
