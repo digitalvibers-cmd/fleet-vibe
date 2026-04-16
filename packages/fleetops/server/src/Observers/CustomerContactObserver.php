@@ -4,6 +4,7 @@ namespace Fleetbase\FleetOps\Observers;
 
 use Fleetbase\FleetOps\Mail\CustomerCredentialsMail;
 use Fleetbase\FleetOps\Models\Contact;
+use Fleetbase\Models\CompanyUser;
 use Fleetbase\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -37,6 +38,11 @@ class CustomerContactObserver
 
             $password = Str::random(12);
             $user->changePassword($password);
+
+            // Vendor ContactObserver::creating() creates the user with status=pending and
+            // no email_verified_at. Activate immediately so the customer can log in.
+            $user->update(['status' => 'active', 'email_verified_at' => now()]);
+            CompanyUser::where('user_uuid', $user->uuid)->update(['status' => 'active']);
 
             Mail::to($contact->email)->send(new CustomerCredentialsMail($password, $contact));
         } catch (\Throwable $e) {
