@@ -24,6 +24,10 @@ php artisan queue:restart
 # Sync scheduler
 php artisan schedule-monitor:sync
 
+# Ensure storage symlink exists and uploads are readable (needed for branding logo/icon)
+php artisan storage:link 2>/dev/null || true
+chmod -R 755 /fleetbase/api/storage/app/public/uploads 2>/dev/null || true
+
 # Clear cache
 php artisan cache:clear
 php artisan route:clear

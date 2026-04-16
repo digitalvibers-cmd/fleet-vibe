@@ -40,23 +40,23 @@
 > Produkcioni DNS (`fleetvibe.flyboxdelivery.rs`) se podešava na kraju, pred go-live.
 > Za razvoj koristimo samo dev poddomen.
 
-- [ ] A record: `fleetvibe.digitalvibe.rs` → Hetzner server IP
-- [ ] A record: `api.fleetvibe.digitalvibe.rs` → Hetzner server IP
+- [x] A record: `fleetvibe.digitalvibe.rs` → Hetzner server IP
+- [x] A record: `apifleetvibe.digitalvibe.rs` → Hetzner server IP
 - [ ] _(Pred go-live)_ A record: `fleetvibe.flyboxdelivery.rs` → server IP
-- [ ] _(Pred go-live)_ A record: `api.fleetvibe.flyboxdelivery.rs` → server IP
+- [ ] _(Pred go-live)_ A record: `apifleetvibe.flyboxdelivery.rs` → server IP
 
 ### 1.3 Reverse Proxy & SSL
 
 - [x] Instalirati Nginx na server
-- [/] Nginx config za dev (`fleetvibe.digitalvibe.rs`)
-  - [ ] SSL via Let's Encrypt (čeka DNS)
+- [x] Nginx config za dev (`fleetvibe.digitalvibe.rs`)
+  - [x] SSL via Let's Encrypt
   - [x] Proxy pass ka Console (:4200)
-- [/] Nginx config za dev API (`api.fleetvibe.digitalvibe.rs`)
-  - [ ] SSL via Let's Encrypt (čeka DNS)
+- [x] Nginx config za dev API (`apifleetvibe.digitalvibe.rs`)
+  - [x] SSL via Let's Encrypt
   - [x] Proxy pass ka API (:8000)
   - [x] WebSocket proxy za SocketCluster (:38000)
 - [ ] _(Pred go-live)_ Nginx config za produkciju (`fleetvibe.flyboxdelivery.rs`) + basic auth
-- [ ] _(Pred go-live)_ Nginx config za prod API (`api.fleetvibe.flyboxdelivery.rs`)
+- [ ] _(Pred go-live)_ Nginx config za prod API (`apifleetvibe.flyboxdelivery.rs`)
 
 ### 1.4 Docker Compose Produkcija
 
@@ -99,20 +99,30 @@
 
 ### 1.8 Korisnički Portal (Custom Frontend)
 
-- [ ] Odabrati tech stack (Next.js ili custom SPA)
-- [ ] Inicijalizovati projekat u `customer-portal/`
-- [ ] Dizajn: Login / Registracija stranica
-- [ ] Dizajn: Dashboard — lista narudžbina
-- [ ] Dizajn: Kreiranje novog delivery zahteva (form)
-- [ ] Dizajn: Detalji narudžbine + praćenje statusa
-- [ ] Backend: Auth integracija sa Fleetbase API
-- [ ] Backend: CRUD operacije za narudžbine
-- [ ] Backend: **Data izolacija** — klijent vidi SAMO svoje narudžbine
-- [ ] Testiranje izolacije (klijent A ne vidi narudžbine klijenta B)
+- [x] Odabrati tech stack → **Next.js 15 (App Router, TypeScript, Tailwind CSS)**
+- [x] Inicijalizovati projekat u `customer-portal/`
+- [x] Dizajn: Login stranica (FlyBox Delivery branding)
+- [x] Dizajn: Dashboard — lista narudžbina sa statusima
+- [x] Dizajn: Kreiranje novog delivery zahteva (pickup/dropoff forma)
+- [x] Dizajn: Detalji narudžbine + praćenje statusa
+- [x] Backend: Auth integracija sa Fleetbase API (BFF pattern, HttpOnly cookie)
+- [x] Backend: CRUD operacije za narudžbine
+- [x] Backend: **Data izolacija** — klijent vidi SAMO svoje narudžbine (CustomerOrders direktiva)
+- [x] Testiranje izolacije (klijent A ne vidi narudžbine klijenta B)
+- [x] Fix: Onemogućen API Model Cache (`API_CACHE_ENABLED=false`) — sprečava curenje podataka između korisnika
+- [x] Google Maps Places Autocomplete za adrese (pickup/dropoff) sa GeoJSON koordinatama
+- [x] Deljeni Header sa navigacijom (Dashboard, Company, New Order, Logout)
+- [x] Stranica sa profilom kupca (Company — ime, ID, email, telefon)
+- [x] Branding: FlyBox Delivery logo, boje
+- [/] Progressive Web App (PWA) podrška
+  - [x] Web App Manifest sa FlyBox brendingom
+  - [x] Service Worker (cache static assets)
+  - [x] PWA ikone (192x192, 512x512)
+  - [x] Install CTA banner (prikazuje se samo ulogovanim korisnicima)
+  - [ ] Testiranje instalacije na Android Chrome i iOS Safari
 - [ ] Dockerizovati portal
 - [ ] Dodati u `docker-compose.prod.yml`
 - [ ] Nginx config za portal domen
-- [ ] Branding: FlyBox Delivery logo, boje
 
 ### 1.9 Operativni Dashboard & KPI
 
@@ -133,11 +143,11 @@
 
 ### 1.10 CI/CD Pipeline
 
-- [ ] Kreirati `.github/workflows/deploy-prod.yml`
-- [ ] Kreirati `.github/workflows/deploy-dev.yml`
+- [/] Kreirati `.github/workflows/deploy-prod.yml` (postoji ali koristi stari GCP setup — treba adaptirati za Hetzner)
+- [x] Kreirati `.github/workflows/deploy-dev.yml` (Hetzner SSH deploy)
 - [ ] Kreirati `scripts/deploy.sh`
 - [ ] Testirati: push to `main` → auto deploy na produkciju
-- [ ] Testirati: push to `dev` → auto deploy na dev
+- [x] Testirati: push to `dev` → auto deploy na dev
 - [ ] Dokumentovati rollback proceduru
 
 ### 1.11 Monitoring
@@ -171,21 +181,60 @@
 - [ ] Bug tracking tokom pilota
 - [ ] Evaluacija: da li sistem zadovoljava kriterijume?
 
+### 1.15 Notifikacije
+
+#### Push Notifikacije (Navigator)
+
+- [ ] Podesiti push notifikacije za Navigator app
+- [ ] Vozač prima push notifikaciju kada mu Operator dodeli vožnju
+- [ ] Koristiti postojeće Fleetbase mehanizme (Firebase Cloud Messaging / APN)
+- [ ] Testirati primanje notifikacija na Android i iOS
+
+#### Email (Mailgun)
+
+- [x] Kreirati Mailgun nalog i verifikovati domen
+- [x] Konfigurisati Mailgun API u Laravel env (docker-compose.override.yml)
+- [x] Email za registraciju i pristup novim korisnicima (pozivnice)
+- [ ] Email obaveštenje klijentima o isporučenoj pošiljci
+- [ ] Email template dizajn (FlyBox Delivery branding)
+- [ ] Testirati deliverability (SPF, DKIM, DMARC)
+
+#### SMS / WhatsApp
+
+- [ ] Istražiti SMS provajdere (Twilio, Vonage, lokalni)
+- [ ] Istražiti WhatsApp Business API integraciju
+- [ ] Notifikacija Operatoru pri kreiranju nove porudžbine
+- [ ] Konfigurisati kanal (SMS ili WhatsApp) po preferencijama
+- [ ] Testirati slanje i primanje poruka
+
+### 1.16 Mobile Responsiveness (FleetVibe Konzola)
+
+- [ ] Audit: identifikovati problematične ekrane na mobilnim uređajima
+- [ ] Fix layout za sidebar navigaciju na mobilnim ekranima
+- [ ] Responsive tabele (scroll ili card view na malom ekranu)
+- [ ] Responsive forme za kreiranje/editovanje naloga
+- [ ] Responsive mapa (full-width na mobilnom)
+- [ ] Testiranje na iOS Safari i Android Chrome
+- [ ] Fix-evi za touch interakcije (drag & drop, modali)
+
 ### ✅ Faza 1 — Go-Live Checklist
 
-- [ ] Hetzner CPX31 deployed + Docker stack running
-- [ ] Nginx + SSL na dev domenu (`fleetvibe.digitalvibe.rs`)
-- [ ] DNS: dev domen funkcioniše
+- [x] Hetzner CPX31 deployed + Docker stack running
+- [x] Nginx + SSL na dev domenu (`fleetvibe.digitalvibe.rs`)
+- [x] DNS: dev domeni funkcionišu
 - [ ] _(Pred go-live)_ Nginx + SSL + basic auth na produkciji (`fleetvibe.flyboxdelivery.rs`)
 - [ ] FleetOps configured (org, profil, branding)
 - [ ] Nalozi: create → assign → in progress → complete
-- [ ] Navigator app prima naloge
+- [ ] Navigator app prima naloge + push notifikacije
 - [ ] Real-time lokacija na mapi
-- [ ] Korisnički portal: login, create delivery, lista, izolacija
+- [x] Korisnički portal: login, create delivery, lista, izolacija, Google Maps, profil kupca
 - [ ] KPI dashboard sa metrikama
-- [ ] CI/CD pipeline radi
+- [/] CI/CD pipeline radi (dev OK, prod treba adaptirati)
 - [ ] Backup + restore testirani
 - [ ] Monitoring aktivan
+- [/] Email notifikacije (Mailgun) konfigurisane (invite radi, ostali templateovi pending)
+- [ ] SMS/WhatsApp notifikacije funkcionišu
+- [ ] Konzola responsive na mobilnim uređajima
 - [ ] Dokumentacija za sve korisnike
 - [ ] Korisnici kreirani
 - [ ] Pilot grupa obučena i počela rad
@@ -313,3 +362,7 @@
 | 2026-04-03 | Inicijalni roadmap kreiran na osnovu Strategy dokumenta |
 | 2026-04-03 | Dev domen: `fleetvibe.digitalvibe.rs`. Prod DNS se podešava pred go-live. |
 | 2026-04-03 | Server 46.225.99.48 provisioniran: UFW, Fail2ban, SSH hardening, Docker, Nginx, backup scripts |
+| 2026-04-06 | Ažurirani statusi: DNS, SSL, Nginx, CI/CD dev deploy — završeni. Dodate sekcije 1.15 (Notifikacije) i 1.16 (Mobile Responsiveness). |
+| 2026-04-06 | Mailgun konfigurisan za dev okruženje (mailgun driver, EU endpoint). Invite emailovi za nove korisnike rade. |
+| 2026-04-15 | Korisnički portal: fix fokusa na inputu, Google Maps Places Autocomplete, deljeni Header, stranica profila kupca, FlyBox logo branding, fix data izolacije (API cache disabled). |
+| 2026-04-16 | Korisnički portal PWA: manifest, service worker, ikone (192/512), install CTA banner (vidljiv samo ulogovanim korisnicima, respektuje dismiss + standalone mode). |

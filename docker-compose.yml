@@ -85,8 +85,8 @@ services:
 
   application:
     image: fleetbase/fleetbase-api:latest
-    # volumes:
-    #   - ./api/.env:/fleetbase/api/.env
+    volumes:
+      - storage-uploads:/fleetbase/api/storage/app/public
     environment:
       ENVIRONMENT: development
       DATABASE_URL: "mysql://root@database/fleetbase"
@@ -103,10 +103,23 @@ services:
       REGISTRY_HOST: https://registry.fleetbase.io
       REGISTRY_PREINSTALLED_EXTENSIONS: 'true'
       OSRM_HOST: https://router.project-osrm.org
+      API_CACHE_ENABLED: 'false'
     depends_on:
       - database
       - cache
       - queue
+
+  customer-portal:
+    build:
+      context: ./customer-portal
+    ports:
+      - "3000:3000"
+    environment:
+      FLEETBASE_API_URL: "http://httpd:80"
+      NEXT_PUBLIC_PORTAL_URL: "http://localhost:3000"
+      COOKIE_SECRET: "change-me-to-random-secret"
+    depends_on:
+      - httpd
 
   httpd:
     build:
@@ -114,5 +127,10 @@ services:
       dockerfile: docker/httpd/Dockerfile
     ports:
       - "8000:80"
+    volumes:
+      - storage-uploads:/fleetbase/api/storage/app/public:ro
     depends_on:
       - application
+
+volumes:
+  storage-uploads:

@@ -133,6 +133,13 @@ Set via `docker-compose.override.yml` or container environment:
 - `BROADCAST_DRIVER` — `socketcluster` for real-time features
 - `REGISTRY_HOST` — Fleetbase extension registry
 - `OSRM_HOST` — Routing engine for fleet operations
+- `MAIL_MAILER` — Mail driver (`mailgun` on dev/prod)
+- `MAILGUN_DOMAIN` / `MAILGUN_SECRET` / `MAILGUN_ENDPOINT` — Mailgun credentials (EU endpoint: `api.eu.mailgun.net`)
+- `MAIL_FROM_ADDRESS` / `MAIL_FROM_NAME` — Sender identity for outgoing emails
+
+### Mail Configuration
+
+Mail is configured via **environment variables** in `docker-compose.override.yml`, NOT through the Fleetbase Admin UI. The Fleetbase Admin panel "Notification Channels" setting does NOT affect Laravel's `$user->notify()` calls (used for user invitations, etc.). All three services that send or process email (`application`, `queue`, `scheduler`) must have the same `MAIL_*` / `MAILGUN_*` env vars. A YAML anchor `x-mail-env` is used to keep them in sync.
 
 ## LogiVibe — Project Context
 
@@ -186,6 +193,17 @@ A separate custom frontend application (`customer-portal/`) where FlyBox Deliver
 - Track delivery status
 
 The portal communicates with the Fleetbase API layer. Data isolation is critical — a client must never see another client's orders.
+
+### Customer Portal PWA
+
+The portal is installable as a PWA:
+- **Manifest**: `customer-portal/public/manifest.json` — FlyBox branding, `start_url: /dashboard`, `display: standalone`
+- **Service worker**: `customer-portal/public/sw.js` — cache-first for `_next/static/*`, network-only for HTML/API (no offline mode)
+- **Install CTA**: `components/PwaInstallBanner.tsx`, rendered inside `Header.tsx` so it appears ONLY on authenticated pages (never on `/login`). Respects `display-mode: standalone` and `localStorage["pwa-install-dismissed"]`.
+- **Event capture**: `lib/pwa.ts` module-level store + `components/PwaProvider.tsx` (mounted in root layout) captures `beforeinstallprompt` before React hydrates.
+- **Middleware**: `sw.js`, `manifest.json`, and `icons/` are excluded from the auth middleware matcher in `middleware.ts`.
+
+iOS Safari does not fire `beforeinstallprompt`, so the CTA never appears there — iOS users install via the Safari "Add to Home Screen" menu.
 
 ## Custom Extensions
 

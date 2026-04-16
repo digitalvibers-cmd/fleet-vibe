@@ -1,0 +1,41 @@
+name: Customer Portal Dev Deploy (Hetzner)
+
+# Deploys the customer-portal to the Hetzner dev server when files in
+# customer-portal/ change on the dev branch.
+#
+# Mechanism: SSH into the server as `deploy` and run the portal-specific
+# deploy script that rebuilds and restarts the customer-portal container.
+#
+# Required repo secret:
+#   HETZNER_DEPLOY_SSH_KEY — ed25519 private key for deploy@46.225.99.48
+
+on:
+  push:
+    branches: ["dev"]
+    paths:
+      - "customer-portal/**"
+      - "docker-compose.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-portal-dev-hetzner
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Portal to Hetzner Dev
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 20
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 46.225.99.48
+          username: deploy
+          key: ${{ secrets.HETZNER_DEPLOY_SSH_KEY }}
+          port: 22
+          command_timeout: 15m
+          script_stop: true
+          script: |
+            sudo -n /usr/local/bin/fleetvibe-deploy-portal
