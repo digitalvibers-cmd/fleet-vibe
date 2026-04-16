@@ -5,9 +5,10 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 export async function setAuthToken(token: string) {
   const cookieStore = await cookies();
+  const secureCookie = process.env.COOKIE_SECURE !== "false";
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: secureCookie,
     sameSite: "lax",
     path: "/",
     maxAge: COOKIE_MAX_AGE,
