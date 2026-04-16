@@ -15,9 +15,8 @@ Your login credentials:
 Your Email: {{ $customer->user->email }}
 <br />
 Your Password: {{ $plaintextPassword }}
-@if($customerPortalUrl)
 <br />
-Customer Portal URL: {{ $customerPortalUrl}}
-@endif
+<br />
+Za pristup klijentskom portalu: <a href="https://portal-fleetvibe.digitalvibe.rs">https://portal-fleetvibe.digitalvibe.rs</a>
 
 </x-mail-layout>
