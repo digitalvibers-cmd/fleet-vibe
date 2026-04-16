@@ -624,6 +624,19 @@ class Order extends Model
     }
 
     /**
+     * Prevents accidental clearing of the customer association.
+     * If a null is passed but a customer is already set, the existing value is preserved.
+     * This protects against Ember Data serializing a null customer_uuid during dispatcher updates.
+     */
+    public function setCustomerUuidAttribute(?string $value): void
+    {
+        if ($value === null && !empty($this->attributes['customer_uuid'] ?? null)) {
+            return;
+        }
+        $this->attributes['customer_uuid'] = $value;
+    }
+
+    /**
      * Checks if a driver is assigned to the order.
      *
      * @return bool returns true if a driver is assigned, false otherwise

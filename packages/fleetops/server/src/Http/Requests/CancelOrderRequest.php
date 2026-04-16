@@ -24,7 +24,17 @@ class CancelOrderRequest extends FleetbaseRequest
     public function rules()
     {
         return [
-            'order' => 'required|exists:orders,uuid',
+            'order' => [
+                'required',
+                function ($attribute, $value, $fail) {
+                    $exists = \Fleetbase\FleetOps\Models\Order::where('uuid', $value)
+                        ->orWhere('public_id', $value)
+                        ->exists();
+                    if (!$exists) {
+                        $fail('The selected order does not exist.');
+                    }
+                },
+            ],
         ];
     }
 }
