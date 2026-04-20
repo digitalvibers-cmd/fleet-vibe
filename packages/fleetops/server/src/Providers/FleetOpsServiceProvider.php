@@ -106,6 +106,7 @@ class FleetOpsServiceProvider extends CoreServiceProvider
         $this->loadRoutesFrom(__DIR__ . '/../routes.php');
         $this->loadMigrationsFrom(__DIR__ . '/../../migrations');
         $this->loadViewsFrom(__DIR__ . '/../../resources/views', 'fleetops');
+        $this->loadViewsFrom(__DIR__ . '/../../resources/views/notifications', 'notifications');
         $this->mergeConfigFrom(__DIR__ . '/../../config/fleetops.php', 'fleetops');
         $this->mergeConfigFrom(__DIR__ . '/../../config/telematics.php', 'telematics');
         $this->mergeConfigFrom(__DIR__ . '/../../config/api.php', 'api');
