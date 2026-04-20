@@ -4,7 +4,6 @@ namespace Fleetbase\FleetOps\Notifications;
 
 use Fleetbase\FleetOps\Http\Resources\v1\Order as OrderResource;
 use Fleetbase\FleetOps\Models\Order;
-use Fleetbase\FleetOps\Support\Utils;
 use Fleetbase\Support\PushNotification;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Bus\Queueable;
@@ -129,7 +128,7 @@ class OrderAssigned extends Notification implements ShouldQueue
             $message->line('Polazak je zakazan za ' . $this->order->scheduled_at);
         }
 
-        $message->action('Otvori aplikaciju Navigator', Utils::consoleUrl('track-order', ['order' => $this->order->trackingNumber->tracking_number]));
+        $message->line('**Otvori aplikaciju Navigator**');
         $message->salutation('FleetVibe tim');
 
         return $message;
