@@ -29,13 +29,13 @@ function LoginForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Login failed. Please try again.");
+        setError(data.error || "Prijava neuspešna. Pokušajte ponovo.");
         return;
       }
 
       router.push(redirect);
     } catch {
-      setError("Network error. Please try again.");
+      setError("Greška u mreži. Pokušajte ponovo.");
     } finally {
       setLoading(false);
     }
@@ -52,7 +52,7 @@ function LoginForm() {
 
         <div>
           <label htmlFor="identity" className="block text-sm font-medium">
-            Email
+            Email adresa
           </label>
           <input
             id="identity"
@@ -62,13 +62,13 @@ function LoginForm() {
             value={identity}
             onChange={(e) => setIdentity(e.target.value)}
             className="mt-1.5 block w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-            placeholder="you@company.com"
+            placeholder="vas@email.com"
           />
         </div>
 
         <div>
           <label htmlFor="password" className="block text-sm font-medium">
-            Password
+            Lozinka
           </label>
           <input
             id="password"
@@ -78,7 +78,7 @@ function LoginForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="mt-1.5 block w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-            placeholder="Enter your password"
+            placeholder="Unesite lozinku"
           />
         </div>
 
@@ -87,7 +87,7 @@ function LoginForm() {
           disabled={loading}
           className="w-full rounded-[25px] bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
         >
-          {loading ? "Signing in..." : "Sign in"}
+          {loading ? "Prijavljivanje..." : "Prijavite se"}
         </button>
       </form>
     </div>
@@ -112,7 +112,7 @@ export default function LoginPage() {
           FlyBox Delivery
         </h2>
         <p className="mt-1 text-center text-sm text-muted-foreground">
-          Sign in to your customer portal
+          Prijavite se na korisnički portal
         </p>
       </div>
 

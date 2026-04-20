@@ -90,7 +90,7 @@ function LocationFields({
             <PlaceAutocompleteInput
               selectedPlace={loc.place}
               onSelect={(place) => setPlace(loc.id, place)}
-              placeholder={`Search ${label.toLowerCase()} address...`}
+              placeholder={`Pretražite ${label.toLowerCase()} adresu...`}
             />
           </div>
         ))}
@@ -100,7 +100,7 @@ function LocationFields({
           className="flex items-center gap-1.5 text-sm text-primary hover:underline"
         >
           <Plus className="h-3.5 w-3.5" />
-          Add {label.toLowerCase()}
+          Dodaj {label.toLowerCase()}
         </button>
       </div>
     </div>
@@ -125,7 +125,7 @@ export default function NewOrderPage() {
     const validDropoffs = dropoffs.filter((d) => d.place?.street1);
 
     if (validPickups.length === 0 || validDropoffs.length === 0) {
-      setError("Please select at least one pickup and one dropoff address.");
+      setError("Izaberite najmanje jednu adresu preuzimanja i jednu adresu isporuke.");
       return;
     }
 
@@ -181,13 +181,13 @@ export default function NewOrderPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || data.message || "Failed to create order.");
+        setError(data.error || data.message || "Kreiranje narudžbine nije uspelo.");
         return;
       }
 
       router.push("/dashboard");
     } catch {
-      setError("Network error. Please try again.");
+      setError("Greška u mreži. Pokušajte ponovo.");
     } finally {
       setSubmitting(false);
     }
@@ -198,7 +198,7 @@ export default function NewOrderPage() {
       <Header />
 
       <main className="mx-auto max-w-3xl px-4 py-6">
-        <h1 className="mb-4 text-lg font-bold font-heading">New Delivery Order</h1>
+        <h1 className="mb-4 text-lg font-bold font-heading">Nova narudžbina za dostavu</h1>
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <div className="rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger">
@@ -209,13 +209,13 @@ export default function NewOrderPage() {
           {/* Locations */}
           <div className="space-y-6">
             <LocationFields
-              label="Pickup"
+              label="Preuzimanje"
               color="bg-green-500"
               list={pickups}
               setList={setPickups}
             />
             <LocationFields
-              label="Dropoff"
+              label="Isporuka"
               color="bg-red-500"
               list={dropoffs}
               setList={setDropoffs}
@@ -226,7 +226,7 @@ export default function NewOrderPage() {
           <div className="rounded-2xl border border-border bg-white p-4">
             <label className="mb-2 flex items-center gap-2 text-sm font-semibold">
               <Calendar className="h-4 w-4 text-primary" />
-              Schedule Delivery (optional)
+              Zakazivanje dostave (opciono)
             </label>
             <input
               type="datetime-local"
@@ -240,13 +240,13 @@ export default function NewOrderPage() {
           <div className="rounded-2xl border border-border bg-white p-4">
             <label className="mb-2 flex items-center gap-2 text-sm font-semibold">
               <FileText className="h-4 w-4 text-primary" />
-              Notes (optional)
+              Napomene (opciono)
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              placeholder="Special instructions, package details, etc."
+              placeholder="Posebna uputstva, detalji o paketu, itd."
               className="w-full resize-none rounded-xl border border-border px-3 py-2 text-sm outline-none focus:border-primary"
             />
           </div>
@@ -258,7 +258,7 @@ export default function NewOrderPage() {
             className="flex w-full items-center justify-center gap-2 rounded-[25px] bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
           >
             <Send className="h-4 w-4" />
-            {submitting ? "Creating order..." : "Create Order"}
+            {submitting ? "Kreiranje narudžbine..." : "Kreiraj narudžbinu"}
           </button>
         </form>
       </main>

@@ -91,7 +91,7 @@ export default function DashboardPage() {
         <div className="mb-6 flex flex-wrap items-end gap-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              From
+              Od
             </label>
             <input
               type="date"
@@ -102,7 +102,7 @@ export default function DashboardPage() {
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              To
+              Do
             </label>
             <input
               type="date"
@@ -113,7 +113,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex-1 min-w-[200px]">
             <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Search by Order ID
+              Pretraži po ID narudžbine
             </label>
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -121,7 +121,7 @@ export default function DashboardPage() {
               </div>
               <input
                 type="text"
-                placeholder="Ex. FLE123..."
+                placeholder="Npr. FLE123..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => {
@@ -136,7 +136,7 @@ export default function DashboardPage() {
             className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm text-muted-foreground transition hover:bg-muted"
           >
             <Search className="h-3.5 w-3.5" />
-            Filter
+            Filtriraj
           </button>
           {(dateFrom || dateTo || searchQuery) && (
             <button
@@ -147,13 +147,13 @@ export default function DashboardPage() {
               }}
               className="text-sm text-primary hover:underline"
             >
-              Clear
+              Obriši
             </button>
           )}
           <button
             onClick={fetchOrders}
             className="ml-auto flex items-center gap-1.5 text-sm text-muted-foreground transition hover:text-foreground"
-            title="Refresh"
+            title="Osveži"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
           </button>
@@ -163,13 +163,13 @@ export default function DashboardPage() {
         {loading && orders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
             <RefreshCw className="mb-3 h-6 w-6 animate-spin" />
-            <p className="text-sm">Loading orders...</p>
+            <p className="text-sm">Učitavanje narudžbina...</p>
           </div>
         ) : orders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
             <Package className="mb-3 h-10 w-10" />
-            <p className="text-sm font-medium">No orders found</p>
-            <p className="mt-1 text-xs">Create your first delivery order</p>
+            <p className="text-sm font-medium">Nema pronađenih narudžbina</p>
+            <p className="mt-1 text-xs">Kreirajte vašu prvu narudžbinu za dostavu</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -219,7 +219,7 @@ export default function DashboardPage() {
                     {order.scheduled_at && (
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        Scheduled: {formatDate(order.scheduled_at)}
+                        Zakazano: {formatDate(order.scheduled_at)}
                       </span>
                     )}
                   </div>

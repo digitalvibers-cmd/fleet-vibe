@@ -96,7 +96,7 @@ export default function OrderDetailPage() {
   }, [id, router]);
 
   async function handleCancel() {
-    if (!confirm("Are you sure you want to cancel this order?")) return;
+    if (!confirm("Da li ste sigurni da želite da otkažete ovu narudžbinu?")) return;
     setCancelling(true);
     try {
       const res = await fetch(`/api/orders/${id}`, { method: "DELETE" });
@@ -111,7 +111,7 @@ export default function OrderDetailPage() {
   if (loading) {
     return (
       <div className="flex min-h-full items-center justify-center">
-        <p className="text-sm text-muted-foreground">Loading order...</p>
+        <p className="text-sm text-muted-foreground">Učitavanje narudžbine...</p>
       </div>
     );
   }
@@ -119,12 +119,12 @@ export default function OrderDetailPage() {
   if (!order) {
     return (
       <div className="flex min-h-full flex-col items-center justify-center gap-3">
-        <p className="text-sm text-muted-foreground">Order not found</p>
+        <p className="text-sm text-muted-foreground">Narudžbina nije pronađena</p>
         <button
           onClick={() => router.push("/dashboard")}
           className="text-sm text-primary hover:underline"
         >
-          Back to dashboard
+          Nazad na kontrolnu tablu
         </button>
       </div>
     );
@@ -145,14 +145,14 @@ export default function OrderDetailPage() {
           <StatusBadge status={order.status} />
         </div>
         {/* Locations */}
-        <Section title="Locations" icon={MapPin}>
+        <Section title="Lokacije" icon={MapPin}>
           <div className="space-y-3">
             {order.payload?.pickup && (
               <div className="flex items-start gap-2.5">
                 <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-green-500" />
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">
-                    Pickup
+                    Preuzimanje
                   </p>
                   <p className="text-sm">
                     {order.payload.pickup.street1 ||
@@ -168,7 +168,7 @@ export default function OrderDetailPage() {
                 <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-yellow-500" />
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">
-                    Waypoint {i + 1}
+                    Tačka {i + 1}
                   </p>
                   <p className="text-sm">
                     {wp.street1 || wp.name}
@@ -182,7 +182,7 @@ export default function OrderDetailPage() {
                 <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-red-500" />
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">
-                    Dropoff
+                    Isporuka
                   </p>
                   <p className="text-sm">
                     {order.payload.dropoff.street1 ||
@@ -197,18 +197,18 @@ export default function OrderDetailPage() {
         </Section>
 
         {/* Details */}
-        <Section title="Details" icon={FileText}>
+        <Section title="Detalji" icon={FileText}>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Order ID</span>
+              <span className="text-muted-foreground">ID narudžbine</span>
               <span className="font-medium">{order.public_id}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Type</span>
+              <span className="text-muted-foreground">Tip</span>
               <span className="font-medium capitalize">{order.type}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Created</span>
+              <span className="text-muted-foreground">Kreirano</span>
               <span className="font-medium flex items-center gap-1">
                 <Clock className="h-3 w-3" />
                 {formatDate(order.created_at)}
@@ -216,7 +216,7 @@ export default function OrderDetailPage() {
             </div>
             {order.scheduled_at && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Scheduled</span>
+                <span className="text-muted-foreground">Zakazano</span>
                 <span className="font-medium flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
                   {formatDate(order.scheduled_at)}
@@ -226,7 +226,7 @@ export default function OrderDetailPage() {
             {order.notes && (
               <div className="pt-2 border-t border-border">
                 <p className="text-xs font-medium text-muted-foreground mb-1">
-                  Notes
+                  Napomene
                 </p>
                 <p className="text-sm">{order.notes}</p>
               </div>
@@ -236,7 +236,7 @@ export default function OrderDetailPage() {
 
         {/* Driver */}
         {order.driver_assigned && (
-          <Section title="Assigned Driver" icon={TruckIcon}>
+          <Section title="Dodeljeni vozač" icon={TruckIcon}>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
                 <User className="h-5 w-5 text-muted-foreground" />
@@ -258,7 +258,7 @@ export default function OrderDetailPage() {
 
         {/* Entities */}
         {order.payload?.entities && order.payload.entities.length > 0 && (
-          <Section title="Items" icon={Package}>
+          <Section title="Stavke" icon={Package}>
             <div className="space-y-2">
               {order.payload.entities.map((entity, i) => (
                 <div
@@ -266,7 +266,7 @@ export default function OrderDetailPage() {
                   className="flex items-center gap-2 rounded-xl bg-muted px-3 py-2 text-sm"
                 >
                   <Package className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>{entity.name || `Item ${i + 1}`}</span>
+                  <span>{entity.name || `Stavka ${i + 1}`}</span>
                 </div>
               ))}
             </div>
@@ -275,7 +275,7 @@ export default function OrderDetailPage() {
 
         {/* Tracking history */}
         {order.tracking_statuses && order.tracking_statuses.length > 0 && (
-          <Section title="Tracking History" icon={Clock}>
+          <Section title="Istorija praćenja" icon={Clock}>
             <div className="space-y-3">
               {order.tracking_statuses.map((ts, i) => (
                 <div key={i} className="flex gap-3">
@@ -316,7 +316,7 @@ export default function OrderDetailPage() {
             className="flex w-full items-center justify-center gap-2 rounded-[25px] border border-danger px-4 py-2.5 text-sm font-semibold text-danger transition hover:bg-danger/5 disabled:opacity-50"
           >
             <XCircle className="h-4 w-4" />
-            {cancelling ? "Cancelling..." : "Cancel Order"}
+            {cancelling ? "Otkazivanje..." : "Otkaži narudžbinu"}
           </button>
         )}
       </main>

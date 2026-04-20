@@ -89,7 +89,7 @@ function extractPlaceData(
 
 export default function PlaceAutocompleteInput({
   selectedPlace,
-  placeholder = "Search address...",
+  placeholder = "Pretražite adresu...",
   onSelect,
   disabled = false,
 }: PlaceAutocompleteInputProps) {

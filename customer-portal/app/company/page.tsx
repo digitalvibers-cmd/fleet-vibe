@@ -71,12 +71,12 @@ export default function CompanyPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
             <RefreshCw className="mb-3 h-6 w-6 animate-spin" />
-            <p className="text-sm">Loading profile...</p>
+            <p className="text-sm">Učitavanje profila...</p>
           </div>
         ) : !customer ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
             <User className="mb-3 h-10 w-10" />
-            <p className="text-sm font-medium">Profile not available</p>
+            <p className="text-sm font-medium">Profil nije dostupan</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -88,7 +88,7 @@ export default function CompanyPage() {
                 </div>
                 <div>
                   <h1 className="text-xl font-bold font-heading">
-                    {customer.name || "Customer"}
+                    {customer.name || "Korisnik"}
                   </h1>
                   {customer.public_id && (
                     <p className="mt-0.5 text-xs text-muted-foreground">
@@ -103,12 +103,12 @@ export default function CompanyPage() {
             <div className="rounded-2xl border border-border bg-white p-5">
               <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
                 <User className="h-4 w-4 text-primary" />
-                Contact Information
+                Kontakt podaci
               </h2>
               <div className="divide-y divide-border">
                 <InfoRow icon={Hash} label="ID" value={customer.public_id} />
                 <InfoRow icon={Mail} label="Email" value={customer.email} />
-                <InfoRow icon={Phone} label="Phone" value={customer.phone} />
+                <InfoRow icon={Phone} label="Telefon" value={customer.phone} />
               </div>
             </div>
           </div>

@@ -17,7 +17,7 @@ const openSans = Open_Sans({
 
 export const metadata: Metadata = {
   title: "FlyBox Delivery Portal",
-  description: "Customer portal for FlyBox Delivery — track and manage your deliveries",
+  description: "Korisnički portal za FlyBox Delivery — pratite i upravljajte vašim isporukama",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
