@@ -6,8 +6,8 @@ import { Plus, LogOut, Building2 } from "lucide-react";
 import PwaInstallBanner from "./PwaInstallBanner";
 
 const NAV_LINKS = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/company", label: "Company", icon: Building2 },
+  { href: "/dashboard", label: "Kontrolna tabla" },
+  { href: "/company", label: "Profil", icon: Building2 },
 ];
 
 export default function Header() {
@@ -68,12 +68,12 @@ export default function Header() {
             className="flex items-center gap-1.5 rounded-[25px] bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-hover"
           >
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">New Order</span>
+            <span className="hidden sm:inline">Nova narudžbina</span>
           </button>
           <button
             onClick={handleLogout}
             className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted"
-            title="Sign out"
+            title="Odjava"
           >
             <LogOut className="h-4 w-4" />
           </button>
