@@ -63,8 +63,8 @@ class OrderAssigned extends Notification implements ShouldQueue
     public function __construct(Order $order)
     {
         $this->order   = $order;
-        $this->title   = 'New order ' . $this->order->trackingNumber->tracking_number . ' assigned!';
-        $this->message = $this->order->isScheduled ? 'You have a new order scheduled for ' . $this->order->scheduled_at : 'You have a new order assigned, tap for details.';
+        $this->title   = 'Flybox - Imate novu rutu!';
+        $this->message = $this->order->isScheduled ? 'Imate novu rutu zakazanu za ' . $this->order->scheduled_at : 'Dodeljena vam je nova ruta. Otvorite Navigator za detalje.';
         $this->data    = ['id' => $this->order->public_id, 'type' => 'order_assigned'];
     }
 
@@ -122,13 +122,15 @@ class OrderAssigned extends Notification implements ShouldQueue
     {
         $message = (new MailMessage())
             ->subject($this->title)
+            ->greeting('Zdravo!')
             ->line($this->message);
 
         if ($this->order->isScheduled) {
-            $message->line('Dispatch is scheduled for ' . $this->order->scheduled_at);
+            $message->line('Polazak je zakazan za ' . $this->order->scheduled_at);
         }
 
-        $message->action('Track Order', Utils::consoleUrl('track-order', ['order' => $this->order->trackingNumber->tracking_number]));
+        $message->action('Otvori aplikaciju Navigator', Utils::consoleUrl('track-order', ['order' => $this->order->trackingNumber->tracking_number]));
+        $message->salutation('FleetVibe tim');
 
         return $message;
     }
