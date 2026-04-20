@@ -28,6 +28,7 @@ class NotificationServiceProvider extends CoreServiceProvider
         NotificationRegistry::register([
             \Fleetbase\FleetOps\Notifications\OrderAssigned::class,
             \Fleetbase\FleetOps\Notifications\OrderCanceled::class,
+            \Fleetbase\FleetOps\Notifications\OrderCreated::class,
             \Fleetbase\FleetOps\Notifications\OrderDispatched::class,
             \Fleetbase\FleetOps\Notifications\OrderDispatchFailed::class,
             \Fleetbase\FleetOps\Notifications\OrderPing::class,

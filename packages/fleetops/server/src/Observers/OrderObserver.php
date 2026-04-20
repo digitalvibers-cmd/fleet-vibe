@@ -3,7 +3,9 @@
 namespace Fleetbase\FleetOps\Observers;
 
 use Fleetbase\FleetOps\Models\Order;
+use Fleetbase\FleetOps\Notifications\OrderCreated;
 use Fleetbase\FleetOps\Support\LiveCacheService;
+use Fleetbase\Support\NotificationRegistry;
 use Illuminate\Support\Facades\Cache;
 
 class OrderObserver
@@ -16,6 +18,7 @@ class OrderObserver
     public function created(Order $order)
     {
         $this->invalidateCache($order);
+        NotificationRegistry::notify(OrderCreated::class, $order);
     }
 
     /**
