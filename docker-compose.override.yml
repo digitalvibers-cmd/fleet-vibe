@@ -1,0 +1,39 @@
+x-mail-env: &mail-env
+  MAIL_MAILER: "mailgun"
+  MAILGUN_DOMAIN: "fleetvibe.digitalvibe.rs"
+  MAILGUN_SECRET: "f7175992b233602ff97028e06032468e-415ae7fb-883e29fa"
+  MAILGUN_ENDPOINT: "api.eu.mailgun.net"
+  MAIL_FROM_ADDRESS: "delivery@flyboxdelivery.rs"
+  MAIL_FROM_NAME: "LogiVibe"
+
+services:
+  application:
+    command: ["sh", "-c", "php artisan octane:frankenphp --max-requests=1000 --port=8000 --host=0.0.0.0 --watch"]
+    environment:
+      APP_KEY: "base64:4Ga2CHyC5xDaJHQEODxSGI8eIfz4ceQ5IfUfSJifhCM="
+      CONSOLE_HOST: "http://localhost:4200"
+      ENVIRONMENT: "development"
+      APP_DEBUG: "true"
+      GOOGLE_MAPS_API_KEY: "AIzaSyD6yNwLnKscN9z2YrTtEcTDN7RIqVJYDLI"
+      <<: *mail-env
+    volumes:
+      - ./packages/fleetops/server:/fleetbase/api/vendor/fleetbase/fleetops-api/server
+
+  queue:
+    environment:
+      <<: *mail-env
+    volumes:
+      - ./packages/fleetops/server:/fleetbase/api/vendor/fleetbase/fleetops-api/server
+
+  scheduler:
+    environment:
+      <<: *mail-env
+
+  console:
+    build:
+      context: .
+      dockerfile: console/Dockerfile.dev
+      args:
+        ENVIRONMENT: development
+    volumes:
+      - ./console/fleetbase.config.json:/usr/share/nginx/html/fleetbase.config.json
