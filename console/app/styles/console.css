@@ -82,6 +82,62 @@ body[data-theme='dark'] #boot-loader > .loader-container > .loading-message {
 
 /**
  * ═══════════════════════════════════════════════════════════════════
+ * Global layout fixes (all screen sizes)
+ *
+ * Fixes za overlay panel headere i section subheadere koji se
+ * primenjuju na svim rezolucijama. Mobilni blok ispod override-uje
+ * ova pravila po potrebi sa !important.
+ * ═══════════════════════════════════════════════════════════════════
+ */
+
+/* ── Overlay panel header: sprečava prelivanje dugmadi iza title sekcije ────
+ *
+ * ember-ui/next.css daje i levoj (title) i desnoj (buttons) sekciji flex-1,
+ * pa na 530px panelu svaka dobija ~249px. Dugmad (Create + Import + ...)
+ * prekoračuju i sakrivaju se iza pozadine title sekcije. Fix: title se
+ * skuplja i skraćuje, desna sekcija uvek ima fiksnu širinu po sadržaju.
+ *
+ * Utiče na sve Layout::Resource::Panel overlay panele: Create Order,
+ * edit kontakta, servisne tarife, izveštaje, itd.
+ */
+.next-content-overlay-panel-header .next-view-header-left {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.next-content-overlay-panel-header .next-view-header-left .next-content-overlay-panel-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.next-content-overlay-panel-header .next-view-header-right {
+    flex: 0 0 auto;
+    flex-shrink: 0;
+}
+
+/* ── Section subheader: dozvoli rast kad ima mnogo dugmadi/filtera ──────────
+ *
+ * ember-ui/next.css ima fiksnu height: 57px bez dozvole wrapovanja.
+ * Na stranicama sa pretragom + filterima + višestrukim dugmadima
+ * (kontakti, servisne tarife, izveštaji) sadržaj preliva van vidljivog
+ * prostora. min-height čuva izgled kad ima malo sadržaja.
+ */
+.next-view-section-subheader {
+    height: auto;
+    min-height: 57px;
+}
+
+.next-view-section-subheader .next-view-section-subheader-actions {
+    flex-wrap: wrap;
+    row-gap: 0.25rem;
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+    align-items: center;
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════
  * Mobile-only overrides (max-width: 767px)
  *
  * All LogiVibe mobile responsiveness fixes live here, outside
@@ -238,5 +294,7 @@ body[data-theme='dark'] #boot-loader > .loader-container > .loading-message {
     .next-content-overlay-panel-header .next-view-header-right {
         flex: 0 0 100% !important;
         padding-top: 0.5rem;
+        min-width: 0;
+        overflow-x: auto;
     }
 }
