@@ -8,7 +8,6 @@ x-mail-env: &mail-env
 
 services:
   application:
-    command: ["sh", "-c", "php artisan octane:frankenphp --max-requests=1000 --port=8000 --host=0.0.0.0 --watch"]
     environment:
       APP_KEY: "base64:4Ga2CHyC5xDaJHQEODxSGI8eIfz4ceQ5IfUfSJifhCM="
       CONSOLE_HOST: "http://localhost:4200"
