@@ -101,19 +101,19 @@ body[data-theme='dark'] #boot-loader > .loader-container > .loading-message {
  * edit kontakta, servisne tarife, izveštaje, itd.
  */
 .next-content-overlay-panel-header .next-view-header-left {
-    flex: 1 1 auto;
-    min-width: 0;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
 }
 
 .next-content-overlay-panel-header .next-view-header-left .next-content-overlay-panel-title {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
 }
 
 .next-content-overlay-panel-header .next-view-header-right {
-    flex: 0 0 auto;
-    flex-shrink: 0;
+    flex: 0 0 auto !important;
+    flex-shrink: 0 !important;
 }
 
 /* ── Section subheader: dozvoli rast kad ima mnogo dugmadi/filtera ──────────
