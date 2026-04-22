@@ -138,6 +138,37 @@ body[data-theme='dark'] #boot-loader > .loader-container > .loading-message {
 
 /**
  * ═══════════════════════════════════════════════════════════════════
+ * Desktop Layout Overrides (min-width: 768px)
+ *
+ * Ensures proper stacking context and prevents the main view header
+ * from overlapping the sidebar, map topbar, and overlay panels.
+ * ═══════════════════════════════════════════════════════════════════
+ */
+@media (min-width: 768px) {
+    /* ── Prevent browser autofocus from scrolling the entire app ──
+     *
+     * The root cause of the map topbar and sidebar disappearing behind the
+     * header is that the overlay panel's body was not height-constrained.
+     * When an input inside it was focused, the browser scrolled the main
+     * app container to bring it into view.
+     * By making the panel a flex column and the body flex-1 with min-height: 0,
+     * the panel scrolls internally, and the browser never scrolls the app.
+     */
+    .next-content-overlay-panel {
+        display: flex !important;
+        flex-direction: column !important;
+        height: 100% !important;
+    }
+    
+    .next-content-overlay-panel-body {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+    }
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════
  * Mobile-only overrides (max-width: 767px)
  *
  * All LogiVibe mobile responsiveness fixes live here, outside
