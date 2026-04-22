@@ -90,22 +90,6 @@ body[data-theme='dark'] #boot-loader > .loader-container > .loading-message {
  * ═══════════════════════════════════════════════════════════════════
  */
 
-/* ── Map topbar + panel header: pomeri ispod glavnog app headera (57px) ─────
- *
- * .next-view-section-container počinje na y=0 (poklapa se sa app headerom).
- * #map-topbar-container i .resource-panel-header su position:absolute/top:0
- * unutar tog kontejnera i padaju iza headera. margin-top: 57px ih gura ispod.
- * Bijeli strip između y=0 i y=57px unutar panela ostaje iza app headera
- * (nije vidljiv).
- */
-#map-topbar-container {
-    margin-top: 57px;
-}
-
-.next-content-overlay-panel-header.resource-panel-header {
-    margin-top: 57px !important;
-}
-
 /* ── Overlay panel header: sprečava prelivanje dugmadi iza title sekcije ────
  *
  * ember-ui/next.css daje i levoj (title) i desnoj (buttons) sekciji flex-1,
