@@ -40,7 +40,7 @@ jobs:
           script: |
             sudo -n /usr/local/bin/fleetvibe-deploy-dev
 
-      - name: Restart API containers
+      - name: Rebuild and restart API containers
         continue-on-error: true
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -48,6 +48,6 @@ jobs:
           username: deploy
           key: ${{ secrets.HETZNER_DEPLOY_SSH_KEY }}
           port: 22
-          command_timeout: 5m
+          command_timeout: 10m
           script: |
-            cd /opt/fleetvibe && docker compose up -d application queue
+            cd /opt/fleetvibe && docker compose build --no-cache application && docker compose up -d application queue
