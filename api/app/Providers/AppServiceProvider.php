@@ -23,6 +23,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        \Fleetbase\FleetOps\Models\Contact::observe(\App\Observers\CustomerContactObserver::class);
+        //
     }
 }
