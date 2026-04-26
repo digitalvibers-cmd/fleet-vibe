@@ -126,6 +126,28 @@ export default function ImportOrdersPage() {
                     <p className="mt-1 text-sm text-muted-foreground">
                         Učitajte Excel fajl sa listom porudžbina. Svaki red kreira jednu porudžbinu.
                     </p>
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 text-xs text-muted-foreground">
+                        <div>
+                            <p className="mb-1 font-medium text-foreground">Preuzimanje</p>
+                            <ul className="space-y-0.5">
+                                <li><span className="text-red-500">*</span> Adresa preuzimanja</li>
+                                <li><span className="text-red-500">*</span> Grad preuzimanja</li>
+                                <li className="text-muted-foreground/70">Naziv preuzimanja (opciono)</li>
+                                <li className="text-muted-foreground/70">Poštanski broj preuzimanja (opciono)</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <p className="mb-1 font-medium text-foreground">Dostava</p>
+                            <ul className="space-y-0.5">
+                                <li><span className="text-red-500">*</span> Adresa dostave</li>
+                                <li><span className="text-red-500">*</span> Grad dostave</li>
+                                <li className="text-muted-foreground/70">Naziv dostave (opciono)</li>
+                                <li className="text-muted-foreground/70">Poštanski broj dostave (opciono)</li>
+                                <li className="text-muted-foreground/70">Napomene (opciono)</li>
+                                <li className="text-muted-foreground/70">Zakazano YYYY-MM-DD HH:mm (opciono)</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
 
                 {/* ── Step 1: Upload ── */}
