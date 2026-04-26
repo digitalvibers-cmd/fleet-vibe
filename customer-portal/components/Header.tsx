@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import { Plus, LogOut, Building2 } from "lucide-react";
+import { Plus, LogOut, Building2, Upload } from "lucide-react";
 import PwaInstallBanner from "./PwaInstallBanner";
 
 const NAV_LINKS = [
@@ -64,11 +64,18 @@ export default function Header() {
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
           <button
+            onClick={() => router.push("/orders/import")}
+            className="flex items-center gap-1.5 rounded-[25px] border border-border px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+          >
+            <Upload className="h-4 w-4" />
+            <span>Uvezi Excel</span>
+          </button>
+          <button
             onClick={() => router.push("/orders/new")}
             className="flex items-center gap-1.5 rounded-[25px] bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-hover"
           >
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Nova narudžbina</span>
+            <span>Nova narudžbina</span>
           </button>
           <button
             onClick={handleLogout}
