@@ -42,10 +42,5 @@ jobs:
           script_stop: true
           envs: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
           script: |
-            cd /opt/fleetvibe
-            if grep -q "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY" .env 2>/dev/null; then
-              sed -i "s|NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=.*|NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}|" .env
-            else
-              echo "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}" >> .env
-            fi
+            printf 'NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=%s\n' "${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}" > "${HOME}/.portal-env"
             sudo -n /usr/local/bin/fleetvibe-deploy-portal
