@@ -23,6 +23,14 @@ class OrderObserver
             return;
         }
 
+        // Portal requests authenticate with customer tokens which don't populate session('company').
+        // NotificationRegistry::notify() uses session('company') via Setting::lookupCompany() to
+        // resolve notification settings — without it, no notifiables are found and nothing is sent.
+        // Inject the company from the order if the session is missing it.
+        if ($order->company_uuid && session()->missing('company')) {
+            session(['company' => $order->company_uuid]);
+        }
+
         NotificationRegistry::notify(OrderCreated::class, $order);
     }
 
