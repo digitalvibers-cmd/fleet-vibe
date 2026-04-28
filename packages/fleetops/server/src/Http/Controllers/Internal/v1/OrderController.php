@@ -530,7 +530,15 @@ class OrderController extends FleetOpsController
         }
 
         $count = $data['count'] ?? $orders->count();
-        \Fleetbase\Support\NotificationRegistry::notify(OrdersBulkCreated::class, $orders->first(), $count);
+        $firstOrder = $orders->first();
+
+        // Portal uses customer auth tokens — session('company') is not set.
+        // Inject it from the order so NotificationRegistry can resolve notification settings.
+        if ($firstOrder->company_uuid && session()->missing('company')) {
+            session(['company' => $firstOrder->company_uuid]);
+        }
+
+        \Fleetbase\Support\NotificationRegistry::notify(OrdersBulkCreated::class, $firstOrder, $count);
 
         return response()->json([
             'status'  => 'OK',
