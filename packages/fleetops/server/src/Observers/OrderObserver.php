@@ -19,7 +19,7 @@ class OrderObserver
     {
         $this->invalidateCache($order);
 
-        if (request()->header('X-Skip-Order-Notification')) {
+        if (app()->bound('fleetops.skip_order_notification')) {
             return;
         }
 

@@ -94,6 +94,11 @@ class OrderController extends FleetOpsController
             return $createOrderRequest->responseWithErrors($validator);
         }
 
+        $skipNotification = $request->hasHeader('X-Skip-Order-Notification');
+        if ($skipNotification) {
+            app()->instance('fleetops.skip_order_notification', true);
+        }
+
         try {
             $record = $this->model->createRecordFromRequest(
                 $request,
@@ -210,6 +215,10 @@ class OrderController extends FleetOpsController
             return response()->error($e->getErrors());
         } catch (\Exception $e) {
             return response()->error($e->getMessage());
+        } finally {
+            if ($skipNotification) {
+                app()->offsetUnset('fleetops.skip_order_notification');
+            }
         }
     }
 
