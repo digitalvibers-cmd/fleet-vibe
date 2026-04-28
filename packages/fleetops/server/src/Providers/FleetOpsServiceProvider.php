@@ -132,6 +132,8 @@ class FleetOpsServiceProvider extends CoreServiceProvider
             \Fleetbase\FleetOps\Notifications\OrderPing::class,
             \Fleetbase\FleetOps\Notifications\OrderFailed::class,
             \Fleetbase\FleetOps\Notifications\OrderCompleted::class,
+            \Fleetbase\FleetOps\Notifications\OrdersBulkCreated::class,
+            \Fleetbase\FleetOps\Notifications\OrdersBulkAssigned::class,
         ]);
 
         // Register Notifiables

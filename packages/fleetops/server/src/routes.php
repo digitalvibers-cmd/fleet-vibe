@@ -334,6 +334,7 @@ Route::prefix(config('fleetops.api.routing.prefix', null))->namespace('Fleetbase
                                 $router->patch('bulk-assign-driver', $controller('bulkAssignDriver'));
                                 $router->patch('bulk-cancel', $controller('bulkCancel'));
                                 $router->post('bulk-dispatch', $controller('bulkDispatch'));
+                                $router->post('notify-bulk-created', $controller('notifyBulkCreated'));
                                 $router->patch('cancel', $controller('cancel'));
                                 $router->patch('dispatch', $controller('dispatchOrder'));
                                 $router->patch('start', $controller('start'));
