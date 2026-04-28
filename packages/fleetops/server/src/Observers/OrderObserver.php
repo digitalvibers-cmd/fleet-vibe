@@ -19,13 +19,7 @@ class OrderObserver
     {
         $this->invalidateCache($order);
 
-        $skipBound = app()->bound('fleetops.skip_order_notification');
-        \Illuminate\Support\Facades\Log::info('[OrderObserver] created fired', [
-            'order'     => $order->public_id,
-            'skip_flag' => $skipBound,
-        ]);
-
-        if ($skipBound) {
+        if (app()->bound('fleetops.skip_order_notification')) {
             return;
         }
 
