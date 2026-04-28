@@ -97,6 +97,10 @@ class OrderController extends FleetOpsController
         }
 
         $skipNotification = $request->hasHeader('X-Skip-Order-Notification');
+        \Illuminate\Support\Facades\Log::info('[OrderController] createRecord', [
+            'has_skip_header' => $skipNotification,
+            'all_headers'     => array_keys($request->headers->all()),
+        ]);
         if ($skipNotification) {
             app()->instance('fleetops.skip_order_notification', true);
         }
