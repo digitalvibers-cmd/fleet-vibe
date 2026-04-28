@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     if (result.succeeded.length > 0) {
         const orderIds = result.succeeded.map((o) => o.id).filter(Boolean);
-        await fleetbaseApi("fleet-ops/orders/notify-bulk-created", {
+        await fleetbaseApi("orders/notify-bulk-created", {
             method: "POST",
             token,
             body: { order_ids: orderIds, count: orderIds.length },

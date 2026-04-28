@@ -18,6 +18,8 @@ use Fleetbase\FleetOps\Http\Resources\v1\Proof as ProofResource;
 use Fleetbase\FleetOps\Imports\OrdersImport;
 use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Notifications\OrderAssigned;
+use Fleetbase\FleetOps\Notifications\OrderCreated;
+use Fleetbase\Models\Setting;
 use Fleetbase\FleetOps\Notifications\OrdersBulkAssigned;
 use Fleetbase\FleetOps\Notifications\OrdersBulkCreated;
 use Fleetbase\FleetOps\Models\Entity;
@@ -529,16 +531,46 @@ class OrderController extends FleetOpsController
             return response()->json(['status' => 'OK', 'message' => 'No orders found']);
         }
 
-        $count = $data['count'] ?? $orders->count();
+        $count      = $data['count'] ?? $orders->count();
         $firstOrder = $orders->first();
 
         // Portal uses customer auth tokens — session('company') is not set.
-        // Inject it from the order so NotificationRegistry can resolve notification settings.
+        // Inject it from the order so Setting::lookupCompany can find notification settings.
         if ($firstOrder->company_uuid && session()->missing('company')) {
             session(['company' => $firstOrder->company_uuid]);
         }
 
-        \Fleetbase\Support\NotificationRegistry::notify(OrdersBulkCreated::class, $firstOrder, $count);
+        // OrdersBulkCreated is a new class with no UI-configured notifiables yet.
+        // Piggyback on the already-configured OrderCreated notifiables so no separate
+        // UI setup is required — whoever receives single-order notifications gets the summary too.
+        $notificationSettings = Setting::lookupCompany('notification_settings');
+        $orderCreatedKey      = Str::camel(str_replace('\\', '', OrderCreated::class)) . '__orderCreated';
+        $notifiableConfigs    = data_get($notificationSettings, "{$orderCreatedKey}.notifiables", []);
+
+        $notification = new OrdersBulkCreated($firstOrder, $count);
+        $notified     = [];
+
+        foreach ($notifiableConfigs as $config) {
+            $definition = data_get($config, 'definition', '');
+            $primaryKey = data_get($config, 'primaryKey', 'uuid');
+            $key        = data_get($config, 'key');
+
+            if (Str::startsWith($definition, 'dynamic:')) {
+                $property   = str_replace('dynamic:', '', $definition);
+                $notifiable = $firstOrder->{$property} ?? null;
+            } else {
+                $model      = app($definition);
+                $notifiable = ($model instanceof \Illuminate\Database\Eloquent\Model)
+                    ? $model->where($primaryKey, $key)->first()
+                    : null;
+            }
+
+            $notifiableId = data_get($notifiable, 'uuid');
+            if ($notifiable && $notifiableId && !in_array($notifiableId, $notified)) {
+                $notifiable->notify($notification);
+                $notified[] = $notifiableId;
+            }
+        }
 
         return response()->json([
             'status'  => 'OK',
