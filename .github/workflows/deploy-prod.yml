@@ -1,129 +1,54 @@
-name: Fleet Vibe Prod Deploy
+name: Fleet Vibe Prod Deploy (Hetzner)
+
+# Deploys the main branch to production at flybox.rs / console.flybox.rs / api.flybox.rs.
+#
+# Mechanism: SSH into 46.225.99.48 as the `deploy` user and invoke
+# /usr/local/bin/fleetvibe-deploy-prod via sudo NOPASSWD. That script runs
+# git fetch + fast-forward merge + docker compose (prod overlay) rebuild of
+# console and customer-portal, then brings them back up.
+#
+# Required repo secret (environment: production):
+#   HETZNER_PROD_SSH_KEY — ed25519 private key for deploy@46.225.99.48
+#   (same key as HETZNER_DEPLOY_SSH_KEY used for dev)
 
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch:
 
 concurrency:
-    group: ${{ github.ref }}
-    cancel-in-progress: true
-
-env:
-  PROJECT: ${{ vars.PROD_PROJECT }}
-  REGISTRY: ${{ vars.PROD_REGISTRY }}
-  SOCKETCLUSTER_HOST: ${{ vars.PROD_SOCKETCLUSTER_HOST }}
-  API_HOST: ${{ vars.PROD_API_HOST }}
-  K8S_CLUSTER_NAME: ${{ vars.PROD_K8S_CLUSTER_NAME }}
-  K8S_CLUSTER_LOCATION: ${{ vars.PROD_K8S_CLUSTER_LOCATION }}
-  GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-  GCP_SERVICE_ACCOUNT: ${{ vars.GCP_SERVICE_ACCOUNT }}
-  GCP: "True"
+  group: deploy-prod-hetzner
+  cancel-in-progress: false
 
 jobs:
-  build_and_deploy_api:
-    name: Build and Deploy API (Prod)
+  deploy:
+    name: Deploy to Hetzner Production
     runs-on: ubuntu-latest
     environment: production
-    permissions:
-      id-token: write
-      contents: read
-
+    timeout-minutes: 20
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
-      with:
-        submodules: recursive
+      - name: Deploy console and portal via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 46.225.99.48
+          username: deploy
+          key: ${{ secrets.HETZNER_PROD_SSH_KEY }}
+          port: 22
+          command_timeout: 15m
+          script_stop: true
+          script: |
+            sudo -n /usr/local/bin/fleetvibe-deploy-prod
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-
-    - id: 'auth'
-      name: 'Authenticate to Google Cloud'
-      uses: 'google-github-actions/auth@v1'
-      with:
-        token_format: "access_token"
-        create_credentials_file: true
-        workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-        service_account: ${{ env.GCP_SERVICE_ACCOUNT }}
-
-    - name: 'Set up Cloud SDK'
-      uses: 'google-github-actions/setup-gcloud@v1'
-
-    - id: 'get-credentials'
-      uses: 'google-github-actions/get-gke-credentials@v1'
-      with:
-        cluster_name: ${{ env.K8S_CLUSTER_NAME }}
-        location: ${{ env.K8S_CLUSTER_LOCATION }}
-
-    - uses: 'docker/login-action@v3'
-      with:
-        registry: ${{ vars.PROD_REGISTRY_HOST }}
-        username: 'oauth2accesstoken'
-        password: '${{ steps.auth.outputs.access_token }}'
-
-    - name: Build and Release
-      uses: docker/bake-action@v2
-      env: 
-        REGISTRY: ${{ env.REGISTRY }}
-        VERSION: ${{ github.sha }}
-        CACHE: type=gha
-      with:
-        push: true
-        files: |
-          ./docker-bake.hcl
-
-    - name: Deploy with Helm
-      run: |
-        helm upgrade -i fleetbase-prod infra/helm -n prod --set image.repository=${{ env.REGISTRY }} --set image.tag=${{ github.sha }} --set 'api_host=${{ env.API_HOST }}' --set 'socketcluster_host=${{ env.SOCKETCLUSTER_HOST }}'
-
-  deploy_console:
-    name: Deploy Console (Prod)
-    needs: [build_and_deploy_api]
-    runs-on: ubuntu-latest
-    environment: production
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-      with:
-        submodules: true
-
-    - id: 'auth'
-      name: 'Authenticate to Google Cloud'
-      uses: 'google-github-actions/auth@v1'
-      with:
-        token_format: "access_token"
-        create_credentials_file: true
-        workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-        service_account: ${{ env.GCP_SERVICE_ACCOUNT }}
-
-    - name: 'Set up Cloud SDK'
-      uses: 'google-github-actions/setup-gcloud@v1'
-
-    - name: Install Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 16
-
-    - uses: pnpm/action-setup@v2
-      name: Install pnpm
-      with:
-        version: 8
-        run_install: false
-
-    - name: Install dependencies
-      run: pnpm install
-      working-directory: ./console
-
-    - name: Build
-      env:
-        SOCKETCLUSTER_HOST: ${{ env.SOCKETCLUSTER_HOST }}
-        API_HOST: ${{ env.API_HOST }}
-      run: pnpm build --environment production
-      working-directory: ./console
-
-    - name: Deploy Console 🚀
-      run: gcloud app deploy --appyaml console/app.yaml console/dist --project=${{ env.PROJECT }} --version=prod
+      - name: Rebuild and restart API containers
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 46.225.99.48
+          username: deploy
+          key: ${{ secrets.HETZNER_PROD_SSH_KEY }}
+          port: 22
+          command_timeout: 10m
+          script: |
+            cd /opt/fleetvibe-prod && \
+              docker compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache application && \
+              docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-deps application queue

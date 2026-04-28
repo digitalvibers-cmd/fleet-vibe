@@ -1,0 +1,85 @@
+# Production overrides — flybox.rs / console.flybox.rs / api.flybox.rs
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml <command>
+#
+# Before first start, replace BOTH occurrences of CHANGE_ME_DB_PASSWORD with
+# the same strong password, and set CHANGE_ME_COOKIE_SECRET.
+#   Generate DB password:   openssl rand -hex 16
+#   Generate cookie secret: openssl rand -hex 32
+
+x-mail-env: &mail-env
+  MAIL_MAILER: "mailgun"
+  MAILGUN_DOMAIN: "fleetvibe.digitalvibe.rs"
+  MAILGUN_SECRET: "***REMOVED***"
+  MAILGUN_ENDPOINT: "api.eu.mailgun.net"
+  MAIL_FROM_ADDRESS: "delivery@flyboxdelivery.rs"
+  MAIL_FROM_NAME: "LogiVibe"
+
+services:
+  database:
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: ""
+      MYSQL_ROOT_PASSWORD: "17b26719f974d34949f344bcab9b0fa4"
+      MYSQL_DATABASE: "fleetbase"
+    ports:
+      - "33061:3306"
+    volumes:
+      - "fleetvibe-prod-mysql:/var/lib/mysql"
+
+  socket:
+    ports:
+      - "38001:8000"
+    environment:
+      SOCKETCLUSTER_OPTIONS: '{"origins":"https://console.flybox.rs:* https://flybox.rs:*"}'
+
+  console:
+    build:
+      context: ./console
+      args:
+        ENVIRONMENT: production
+    ports:
+      - "4201:4200"
+    volumes:
+      - ./console/fleetbase.config.prod.json:/usr/share/nginx/html/fleetbase.config.json
+
+  httpd:
+    ports:
+      - "8001:80"
+
+  application:
+    environment:
+      ENVIRONMENT: "production"
+      APP_KEY: "base64:4Ga2CHyC5xDaJHQEODxSGI8eIfz4ceQ5IfUfSJifhCM="
+      APP_URL: "https://api.flybox.rs"
+      CONSOLE_HOST: "https://console.flybox.rs"
+      APP_DEBUG: "false"
+      API_CACHE_ENABLED: "true"
+      SESSION_DOMAIN: ".flybox.rs"
+      DATABASE_URL: "mysql://root:17b26719f974d34949f344bcab9b0fa4@database/fleetbase"
+      GOOGLE_MAPS_API_KEY: "***REMOVED***"
+      <<: *mail-env
+
+  queue:
+    environment:
+      DATABASE_URL: "mysql://root:17b26719f974d34949f344bcab9b0fa4@database/fleetbase"
+      <<: *mail-env
+
+  scheduler:
+    environment:
+      DATABASE_URL: "mysql://root:17b26719f974d34949f344bcab9b0fa4@database/fleetbase"
+      <<: *mail-env
+
+  customer-portal:
+    build:
+      context: ./customer-portal
+      args:
+        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: "***REMOVED***"
+        NEXT_PUBLIC_PORTAL_URL: "https://flybox.rs"
+    ports:
+      - "3001:3000"
+    environment:
+      FLEETBASE_API_URL: "http://httpd:80"
+      NEXT_PUBLIC_PORTAL_URL: "https://flybox.rs"
+      COOKIE_SECRET: "***REMOVED***"
+
+volumes:
+  fleetvibe-prod-mysql:
