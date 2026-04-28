@@ -17,6 +17,9 @@ use Fleetbase\FleetOps\Http\Resources\v1\Order as OrderResource;
 use Fleetbase\FleetOps\Http\Resources\v1\Proof as ProofResource;
 use Fleetbase\FleetOps\Imports\OrdersImport;
 use Fleetbase\FleetOps\Models\Driver;
+use Fleetbase\FleetOps\Notifications\OrderAssigned;
+use Fleetbase\FleetOps\Notifications\OrdersBulkAssigned;
+use Fleetbase\FleetOps\Notifications\OrdersBulkCreated;
 use Fleetbase\FleetOps\Models\Entity;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\OrderConfig;
@@ -449,13 +452,14 @@ class OrderController extends FleetOpsController
             ]);
         });
 
-        // Queue Per‑Order Notifications
+        // Queue Per‑Order Push Notifications + Single Summary Email
         if (!$request->boolean('silent')) {
             dispatch(function () use ($orderUuids, $driver): void {
                 // Re‑hydrate Driver To Avoid Serializing The Full Model
                 $driver = Driver::whereUuid($driver->uuid)->first();
 
                 // Stream Orders To Keep Memory Footprint Low
+                // Send push/broadcast per order but suppress email — one summary email is sent after
                 Order::whereIn('uuid', $orderUuids)
                     ->cursor()
                     ->each(function (Order $order) use ($driver): void {
@@ -464,7 +468,7 @@ class OrderController extends FleetOpsController
                         $order->driver_assigned_uuid = $driver->uuid;
 
                         try {
-                            $order->notifyDriverAssigned();
+                            $driver->notify(new OrderAssigned($order, false));
                         } catch (\Throwable $e) {
                             logger()->warning(
                                 'Failed notifying driver on order ' . $order->uuid,
@@ -472,6 +476,13 @@ class OrderController extends FleetOpsController
                             );
                         }
                     });
+
+                // Send one summary email to driver for the entire bulk assignment
+                try {
+                    $driver->notify(new OrdersBulkAssigned($orderUuids->count()));
+                } catch (\Throwable $e) {
+                    logger()->warning('Failed sending bulk assignment email to driver ' . $driver->uuid, ['error' => $e->getMessage()]);
+                }
             })
             ->afterCommit();
         }
@@ -484,6 +495,38 @@ class OrderController extends FleetOpsController
                 $orderUuids->count()
             ),
             'count'   => $orderUuids->count(),
+        ]);
+    }
+
+    /**
+     * Sends a single summary email notification after a bulk order import.
+     * Called by the customer portal after all orders are created (with individual notifications suppressed).
+     *
+     * @param \Illuminate\Http\Request $request
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function notifyBulkCreated(Request $request)
+    {
+        $data = $request->validate([
+            'order_ids'   => 'required|array|min:1',
+            'order_ids.*' => 'string',
+            'count'       => 'sometimes|integer',
+        ]);
+
+        $orders = Order::whereIn('public_id', $data['order_ids'])->get();
+
+        if ($orders->isEmpty()) {
+            return response()->json(['status' => 'OK', 'message' => 'No orders found']);
+        }
+
+        $count = $data['count'] ?? $orders->count();
+        \Fleetbase\Support\NotificationRegistry::notify(OrdersBulkCreated::class, $orders->first(), $count);
+
+        return response()->json([
+            'status'  => 'OK',
+            'message' => "Sent bulk created notification for {$count} orders",
+            'count'   => $count,
         ]);
     }
 

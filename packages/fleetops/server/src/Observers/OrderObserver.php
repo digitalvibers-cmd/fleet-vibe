@@ -18,6 +18,11 @@ class OrderObserver
     public function created(Order $order)
     {
         $this->invalidateCache($order);
+
+        if (request()->header('X-Skip-Order-Notification')) {
+            return;
+        }
+
         NotificationRegistry::notify(OrderCreated::class, $order);
     }
 

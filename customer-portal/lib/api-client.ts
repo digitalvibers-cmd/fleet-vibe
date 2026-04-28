@@ -5,6 +5,7 @@ interface ApiOptions {
   body?: unknown;
   token?: string;
   params?: Record<string, string>;
+  headers?: Record<string, string>;
 }
 
 interface ApiResponse<T = unknown> {
@@ -17,7 +18,7 @@ export async function fleetbaseApi<T = unknown>(
   path: string,
   options: ApiOptions = {}
 ): Promise<ApiResponse<T>> {
-  const { method = "GET", body, token, params } = options;
+  const { method = "GET", body, token, params, headers: extraHeaders } = options;
 
   const url = new URL(`/int/v1/${path}`, FLEETBASE_API_URL);
   if (params) {
@@ -29,6 +30,7 @@ export async function fleetbaseApi<T = unknown>(
   const headers: Record<string, string> = {
     Accept: "application/json",
     "Content-Type": "application/json",
+    ...extraHeaders,
   };
 
   if (token) {

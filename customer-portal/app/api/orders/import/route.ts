@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
             method: "POST",
             token,
             body: { order: orderData },
+            headers: { "X-Skip-Order-Notification": "1" },
         });
 
         if (res.ok) {
@@ -76,6 +77,15 @@ export async function POST(request: NextRequest) {
             const errMsg = (res.data as Record<string, unknown>)?.message as string | undefined;
             result.failed.push({ rowIndex: order.rowIndex, error: errMsg ?? `HTTP ${res.status}` });
         }
+    }
+
+    if (result.succeeded.length > 0) {
+        const orderIds = result.succeeded.map((o) => o.id).filter(Boolean);
+        await fleetbaseApi("fleet-ops/orders/notify-bulk-created", {
+            method: "POST",
+            token,
+            body: { order_ids: orderIds, count: orderIds.length },
+        });
     }
 
     return NextResponse.json(result, { status: 200 });

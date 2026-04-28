@@ -55,16 +55,23 @@ class OrderAssigned extends Notification implements ShouldQueue
     public array $data = [];
 
     /**
+     * Whether to include the mail channel. Set to false for bulk assignments
+     * where a single summary email is sent separately.
+     */
+    private bool $mailEnabled;
+
+    /**
      * Create a new notification instance.
      *
      * @return void
      */
-    public function __construct(Order $order)
+    public function __construct(Order $order, bool $mailEnabled = true)
     {
-        $this->order   = $order;
-        $this->title   = 'Flybox - Imate novu rutu!';
-        $this->message = $this->order->isScheduled ? 'Imate novu rutu zakazanu za ' . $this->order->scheduled_at : 'Dodeljena vam je nova ruta. Otvorite Navigator za detalje.';
-        $this->data    = ['id' => $this->order->public_id, 'type' => 'order_assigned'];
+        $this->order       = $order;
+        $this->mailEnabled = $mailEnabled;
+        $this->title       = 'Flybox - Imate novu rutu!';
+        $this->message     = $this->order->isScheduled ? 'Imate novu rutu zakazanu za ' . $this->order->scheduled_at : 'Dodeljena vam je nova ruta. Otvorite Navigator za detalje.';
+        $this->data        = ['id' => $this->order->public_id, 'type' => 'order_assigned'];
     }
 
     /**
@@ -72,9 +79,14 @@ class OrderAssigned extends Notification implements ShouldQueue
      *
      * @return array
      */
-    public function via($notifiable)
+    public function via($notifiable): array
     {
-        return ['broadcast', 'mail', FcmChannel::class, ApnChannel::class];
+        $channels = ['broadcast', FcmChannel::class, ApnChannel::class];
+        if ($this->mailEnabled) {
+            $channels[] = 'mail';
+        }
+
+        return $channels;
     }
 
     /**
