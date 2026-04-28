@@ -6,8 +6,9 @@ name: Customer Portal Dev Deploy (Hetzner)
 # Mechanism: SSH into the server as `deploy` and run the portal-specific
 # deploy script that rebuilds and restarts the customer-portal container.
 #
-# Required repo secret:
-#   HETZNER_DEPLOY_SSH_KEY — ed25519 private key for deploy@46.225.99.48
+# Required repo secrets:
+#   HETZNER_DEPLOY_SSH_KEY        — ed25519 private key for deploy@46.225.99.48
+#   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY — Google Maps JS API key (baked into Next.js bundle at build time)
 
 on:
   push:
@@ -30,6 +31,8 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
         with:
           host: 46.225.99.48
           username: deploy
@@ -37,5 +40,12 @@ jobs:
           port: 22
           command_timeout: 15m
           script_stop: true
+          envs: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
           script: |
+            cd /opt/fleetvibe
+            if grep -q "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY" .env 2>/dev/null; then
+              sed -i "s|NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=.*|NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}|" .env
+            else
+              echo "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}" >> .env
+            fi
             sudo -n /usr/local/bin/fleetvibe-deploy-portal
