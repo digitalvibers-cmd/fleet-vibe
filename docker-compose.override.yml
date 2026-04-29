@@ -28,11 +28,29 @@ services:
     environment:
       <<: *mail-env
 
+  database:
+    ports:
+      - "33060:3306"
+
+  socket:
+    ports:
+      - "38000:8000"
+
+  httpd:
+    ports:
+      - "8000:80"
+
   console:
     build:
       context: .
       dockerfile: console/Dockerfile.dev
       args:
         ENVIRONMENT: development
+    ports:
+      - "4200:4200"
     volumes:
       - ./console/fleetbase.config.json:/usr/share/nginx/html/fleetbase.config.json
+
+  customer-portal:
+    ports:
+      - "3000:3000"
