@@ -236,6 +236,30 @@ if ($order->company_uuid && session()->missing('company')) {
 }
 ```
 
+### Dev and prod stacks on the same server
+
+Both dev (`/opt/fleetvibe`) and prod (`/opt/fleetvibe-prod`) run on the same Hetzner server (46.225.99.48) using different port offsets. Host port bindings live in the env-specific overlay files, NOT in `docker-compose.yml` (base has no port bindings to avoid merge conflicts):
+
+| Service | Dev port | Prod port |
+|---------|----------|-----------|
+| console | 4200 | 4201 |
+| httpd (API) | 8000 | 8001 |
+| socket | 38000 | 38001 |
+| database | 33060 | 33061 |
+| customer-portal | 3000 | 3001 |
+
+Prod stack is managed with: `docker compose -f docker-compose.yml -f docker-compose.prod.yml <command>`
+
+### MySQL databases for prod
+
+On first setup, MySQL only creates `fleetbase`. The Storefront and Sandbox extensions need additional databases. Create them once manually:
+```bash
+docker exec fleetvibe-prod-database-1 mysql -uroot -p<PROD_DB_PASSWORD> -e '
+CREATE DATABASE IF NOT EXISTS fleetbase_storefront;
+CREATE DATABASE IF NOT EXISTS fleetbase_sandbox;
+'
+```
+
 ### Bulk notification pattern (X-Skip-Order-Notification)
 To suppress individual `OrderCreated` emails during bulk import and send one summary instead:
 - Portal sends `headers: { 'X-Skip-Order-Notification': '1' }` on each order POST

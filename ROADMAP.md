@@ -57,20 +57,21 @@
   - [x] SSL via Let's Encrypt
   - [x] Proxy pass ka API (:8000)
   - [x] WebSocket proxy za SocketCluster (:38000)
-- [ ] _(Pred go-live)_ Nginx config za produkciju (`flybox.rs`, `console.flybox.rs`) + SSL
-- [ ] _(Pred go-live)_ Nginx config za prod API (`api.flybox.rs`) + SSL
+- [x] Nginx config za produkciju (`flybox.rs`, `console.flybox.rs`) + SSL (Let's Encrypt)
+- [x] Nginx config za prod API (`api.flybox.rs`) + SSL (Let's Encrypt)
+- [ ] SSL za `www.flybox.rs` (DNS SERVFAIL pri prvom pokušaju — dodati kad se propagacija stabilizuje)
 
 ### 1.4 Docker Compose Produkcija
 
-- [ ] Kreirati `docker-compose.prod.yml` override
-- [ ] Kreirati `.env.production` sa svim env varijablama
-- [ ] Volume mounts za MySQL data persistenciju
-- [ ] Restart policies (`unless-stopped`) za sve servise
-- [ ] Health checks za MySQL, Redis, API
+- [x] Kreirati `docker-compose.prod.yml` override
+- [-] Kreirati `.env.production` — env varijable su u `docker-compose.prod.yml` (ne treba poseban fajl)
+- [x] Volume mounts za MySQL data persistenciju (`fleetvibe-prod-mysql` named volume)
+- [x] Restart policies (`unless-stopped`) za sve servise
+- [x] Health checks za MySQL, Redis, API
 - [x] Docker log rotation config
-- [ ] Testirati `docker compose up -d` na serveru
-- [ ] Pokrenuti migracije (`deploy.sh`)
-- [ ] Verifikovati da su svi servisi zdravi
+- [x] Testirati `docker compose up -d` na serveru (/opt/fleetvibe-prod)
+- [x] Pokrenuti migracije (`php artisan migrate --force`)
+- [x] Verifikovati da su svi servisi zdravi (8/8 kontejnera up)
 
 ### 1.5 Backup Strategija
 
@@ -122,9 +123,9 @@
   - [x] PWA ikone (192x192, 512x512)
   - [x] Install CTA banner (prikazuje se samo ulogovanim korisnicima)
   - [ ] Testiranje instalacije na Android Chrome i iOS Safari
-- [ ] Dockerizovati portal
-- [ ] Dodati u `docker-compose.prod.yml`
-- [ ] Nginx config za portal domen
+- [x] Dockerizovati portal
+- [x] Dodati u `docker-compose.prod.yml` (port 3001, `https://flybox.rs`)
+- [x] Nginx config za portal domen (`flybox.rs`, `www.flybox.rs`)
 
 ### 1.9 Operativni Dashboard & KPI
 
@@ -148,7 +149,7 @@
 - [x] Kreirati `.github/workflows/deploy-prod.yml` (adaptiran za Hetzner, spreman za flybox.rs)
 - [x] Kreirati `.github/workflows/deploy-dev.yml` (Hetzner SSH deploy)
 - [ ] Kreirati `scripts/deploy.sh`
-- [ ] Testirati: push to `main` → auto deploy na produkciju
+- [x] Testirati: push to `main` → auto deploy na produkciju
 - [x] Testirati: push to `dev` → auto deploy na dev
 - [ ] Dokumentovati rollback proceduru
 
@@ -224,14 +225,14 @@
 - [x] Hetzner CPX31 deployed + Docker stack running
 - [x] Nginx + SSL na dev domenu (`fleetvibe.digitalvibe.rs`)
 - [x] DNS: dev domeni funkcionišu
-- [ ] _(Pred go-live)_ Nginx + SSL na produkciji (`flybox.rs`, `console.flybox.rs`, `api.flybox.rs`)
+- [x] Nginx + SSL na produkciji (`flybox.rs`, `console.flybox.rs`, `api.flybox.rs`)
 - [ ] FleetOps configured (org, profil, branding)
 - [ ] Nalozi: create → assign → in progress → complete
 - [ ] Navigator app prima naloge + push notifikacije
 - [ ] Real-time lokacija na mapi
 - [x] Korisnički portal: login, create delivery, lista, izolacija, Google Maps, profil kupca
 - [ ] KPI dashboard sa metrikama
-- [/] CI/CD pipeline radi (dev OK, prod treba adaptirati)
+- [x] CI/CD pipeline radi (dev i prod automatski deploy)
 - [ ] Backup + restore testirani
 - [ ] Monitoring aktivan
 - [/] Email notifikacije (Mailgun) konfigurisane (invite radi, ostali templateovi pending)
@@ -368,4 +369,4 @@
 | 2026-04-06 | Mailgun konfigurisan za dev okruženje (mailgun driver, EU endpoint). Invite emailovi za nove korisnike rade. |
 | 2026-04-15 | Korisnički portal: fix fokusa na inputu, Google Maps Places Autocomplete, deljeni Header, stranica profila kupca, FlyBox logo branding, fix data izolacije (API cache disabled). |
 | 2026-04-16 | Korisnički portal PWA: manifest, service worker, ikone (192/512), install CTA banner (vidljiv samo ulogovanim korisnicima, respektuje dismiss + standalone mode). |
-| 2026-04-29 | Produkcioni domeni promenjeni na flybox.rs. DNS A recordi aktivni (flybox.rs, www, console, api → 46.225.99.48). docker-compose.prod.yml, deploy-prod.yml, Nginx vhostovi i setup-prod-server.sh su spremni. |
+| 2026-04-29 | Produkcija pokrenuta na flybox.rs. DNS A recordi aktivni. Nginx vhostovi + SSL (Let's Encrypt) za flybox.rs, console.flybox.rs, api.flybox.rs. Docker prod stack up (8 servisa, /opt/fleetvibe-prod). Migracije izvršene. CI/CD dev→prod aktivan. Port konflikt fix: host portovi premješteni iz base compose u env-specific overrides (dev: 4200/8000/3000, prod: 4201/8001/3001). |
