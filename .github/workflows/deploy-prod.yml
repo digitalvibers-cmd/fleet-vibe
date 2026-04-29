@@ -32,7 +32,7 @@ jobs:
         with:
           host: 46.225.99.48
           username: deploy
-          key: ${{ secrets.HETZNER_PROD_SSH_KEY }}
+          key: ${{ secrets.HETZNER_DEPLOY_SSH_KEY }}
           port: 22
           command_timeout: 15m
           script_stop: true
@@ -45,7 +45,7 @@ jobs:
         with:
           host: 46.225.99.48
           username: deploy
-          key: ${{ secrets.HETZNER_PROD_SSH_KEY }}
+          key: ${{ secrets.HETZNER_DEPLOY_SSH_KEY }}
           port: 22
           command_timeout: 10m
           script: |
