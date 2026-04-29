@@ -154,7 +154,7 @@ Key project documents:
 | Branch | Environment | Domain | Notes |
 |--------|------------|--------|-------|
 | `dev` | **Development** | `fleetvibe.digitalvibe.rs` | Active development, auto-deploy on push |
-| `main` | **Production** | `fleetvibe.flyboxdelivery.rs` | Stable releases only, auto-deploy on push, protected with basic auth |
+| `main` | **Production** | `flybox.rs` / `console.flybox.rs` | Stable releases only, auto-deploy on push |
 
 **Rules:**
 - All development work happens on `dev` or feature branches merged into `dev`.
@@ -162,18 +162,19 @@ Key project documents:
 - CI/CD (GitHub Actions) deploys automatically:
   - Push to `dev` → deploy to dev server
   - Push to `main` → deploy to production server
-- Production domain has **basic auth** protection in front of Nginx.
 
 ## Environments
 
 ### Development
 - **Console**: `https://fleetvibe.digitalvibe.rs`
 - **API**: `https://apifleetvibe.digitalvibe.rs`
+- **Portal**: `https://portal-fleetvibe.digitalvibe.rs`
 - No basic auth, open for testing
 
-### Production (configured at go-live)
-- **Console**: `https://fleetvibe.flyboxdelivery.rs` (basic auth required)
-- **API**: `https://apifleetvibe.flyboxdelivery.rs`
+### Production
+- **Portal** (customer-facing): `https://flybox.rs`
+- **Console** (internal ops): `https://console.flybox.rs`
+- **API**: `https://api.flybox.rs`
 
 ## Infrastructure
 

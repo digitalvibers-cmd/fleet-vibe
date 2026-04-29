@@ -42,8 +42,10 @@
 
 - [x] A record: `fleetvibe.digitalvibe.rs` → Hetzner server IP
 - [x] A record: `apifleetvibe.digitalvibe.rs` → Hetzner server IP
-- [ ] _(Pred go-live)_ A record: `fleetvibe.flyboxdelivery.rs` → server IP
-- [ ] _(Pred go-live)_ A record: `apifleetvibe.flyboxdelivery.rs` → server IP
+- [x] A record: `flybox.rs` → server IP (portal/customer-facing)
+- [x] A record: `www.flybox.rs` → server IP
+- [x] A record: `console.flybox.rs` → server IP
+- [x] A record: `api.flybox.rs` → server IP
 
 ### 1.3 Reverse Proxy & SSL
 
@@ -55,8 +57,8 @@
   - [x] SSL via Let's Encrypt
   - [x] Proxy pass ka API (:8000)
   - [x] WebSocket proxy za SocketCluster (:38000)
-- [ ] _(Pred go-live)_ Nginx config za produkciju (`fleetvibe.flyboxdelivery.rs`) + basic auth
-- [ ] _(Pred go-live)_ Nginx config za prod API (`apifleetvibe.flyboxdelivery.rs`)
+- [ ] _(Pred go-live)_ Nginx config za produkciju (`flybox.rs`, `console.flybox.rs`) + SSL
+- [ ] _(Pred go-live)_ Nginx config za prod API (`api.flybox.rs`) + SSL
 
 ### 1.4 Docker Compose Produkcija
 
@@ -143,7 +145,7 @@
 
 ### 1.10 CI/CD Pipeline
 
-- [/] Kreirati `.github/workflows/deploy-prod.yml` (postoji ali koristi stari GCP setup — treba adaptirati za Hetzner)
+- [x] Kreirati `.github/workflows/deploy-prod.yml` (adaptiran za Hetzner, spreman za flybox.rs)
 - [x] Kreirati `.github/workflows/deploy-dev.yml` (Hetzner SSH deploy)
 - [ ] Kreirati `scripts/deploy.sh`
 - [ ] Testirati: push to `main` → auto deploy na produkciju
@@ -222,7 +224,7 @@
 - [x] Hetzner CPX31 deployed + Docker stack running
 - [x] Nginx + SSL na dev domenu (`fleetvibe.digitalvibe.rs`)
 - [x] DNS: dev domeni funkcionišu
-- [ ] _(Pred go-live)_ Nginx + SSL + basic auth na produkciji (`fleetvibe.flyboxdelivery.rs`)
+- [ ] _(Pred go-live)_ Nginx + SSL na produkciji (`flybox.rs`, `console.flybox.rs`, `api.flybox.rs`)
 - [ ] FleetOps configured (org, profil, branding)
 - [ ] Nalozi: create → assign → in progress → complete
 - [ ] Navigator app prima naloge + push notifikacije
@@ -366,3 +368,4 @@
 | 2026-04-06 | Mailgun konfigurisan za dev okruženje (mailgun driver, EU endpoint). Invite emailovi za nove korisnike rade. |
 | 2026-04-15 | Korisnički portal: fix fokusa na inputu, Google Maps Places Autocomplete, deljeni Header, stranica profila kupca, FlyBox logo branding, fix data izolacije (API cache disabled). |
 | 2026-04-16 | Korisnički portal PWA: manifest, service worker, ikone (192/512), install CTA banner (vidljiv samo ulogovanim korisnicima, respektuje dismiss + standalone mode). |
+| 2026-04-29 | Produkcioni domeni promenjeni na flybox.rs. DNS A recordi aktivni (flybox.rs, www, console, api → 46.225.99.48). docker-compose.prod.yml, deploy-prod.yml, Nginx vhostovi i setup-prod-server.sh su spremni. |
