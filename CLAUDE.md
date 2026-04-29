@@ -213,6 +213,36 @@ LogiVibe builds proprietary Fleetbase extensions to add functionality without mo
 - Use `fleetbase extension:make` CLI to scaffold new extensions
 - Keep core Fleetbase modifications to an absolute minimum to allow upstream updates
 
+## Deployment Gotchas
+
+### PHP changes require manual container restart
+The CI/CD deploy script (`fleetvibe-deploy-dev`) only rebuilds and restarts the `console` container. Changes to `packages/fleetops/server/` or any other PHP code are NOT picked up automatically — Laravel Octane keeps classes in memory. After pushing PHP changes, always SSH to the server and run:
+```bash
+docker compose restart application queue
+```
+
+### Customer Portal deploy
+The portal (`customer-portal/`) is deployed by a separate script (`/usr/local/bin/fleetvibe-deploy-portal`). It rebuilds the `customer-portal` Docker container from source. Build-time env vars (e.g. `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`) are written by CI into `/home/deploy/.portal-env` — this file must be owned by the `deploy` user, not root. If the portal CI action fails with "Permission denied" on `.portal-env`, run `chown deploy:deploy /home/deploy/.portal-env` on the server.
+
+### Internal API route prefix
+Fleetbase internal routes use the `/int/v1/` prefix. The `fleetbaseRoutes('orders', ...)` macro inside the `v1` group registers at `/int/v1/orders/`, **not** `/int/v1/fleet-ops/orders/`. The customer portal's `fleetbaseApi("orders", ...)` correctly maps to `/int/v1/orders`. Do not add `fleet-ops/` prefix when calling internal order routes from the portal.
+
+### NotificationRegistry and portal (customer) auth tokens
+`NotificationRegistry::notify()` calls `Setting::lookupCompany('notification_settings')` which reads `session('company')`. Portal requests authenticate with customer contact tokens — these do **not** populate `session('company')`, so the registry finds no notifiables and silently sends nothing. When calling `NotificationRegistry::notify()` in a context that may be triggered by a portal request (observer, controller endpoint), inject the company from the model first:
+```php
+if ($order->company_uuid && session()->missing('company')) {
+    session(['company' => $order->company_uuid]);
+}
+```
+
+### Bulk notification pattern (X-Skip-Order-Notification)
+To suppress individual `OrderCreated` emails during bulk import and send one summary instead:
+- Portal sends `headers: { 'X-Skip-Order-Notification': '1' }` on each order POST
+- `OrderController::createRecord()` sets `app()->instance('fleetops.skip_order_notification', true)` before `createRecordFromRequest()`, clears it in `finally`
+- `OrderObserver::created()` checks `app()->bound('fleetops.skip_order_notification')` and returns early
+- After the loop, portal calls `POST /int/v1/orders/notify-bulk-created` with `{ order_ids: [...public_ids], count: N }` — use `o.public_id`, not `o.id` (the API response field `id` may be undefined)
+- `OrderController::notifyBulkCreated()` resolves notifiables from `OrderCreated` settings (already configured in UI) and sends `OrdersBulkCreated` to them
+
 ## Development Guidelines
 
 1. **Minimize core changes**: Prefer extensions over modifying `packages/` submodules. If a core change is unavoidable, document it clearly.
