@@ -116,6 +116,24 @@ body[data-theme='dark'] #boot-loader > .loader-container > .loading-message {
     flex-shrink: 0 !important;
 }
 
+/* ── Overlay panel header: flex-wrap + auto height (sve širine ekrana) ──────
+ *
+ * next.css fiksira height: 57px bez flex-wrap — dugmad pretiču naslov panela
+ * na srednjim širinama prozora (laptop, tablet landscape). Ove globalne
+ * vrednosti osiguravaju wrap na svim veličinama; mobile blok ispod dodaje
+ * padding prilagođavanja.
+ */
+.next-content-overlay-panel-header {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 57px;
+    z-index: 10;
+}
+
+.next-content-overlay-panel-header .next-view-header-right {
+    flex-wrap: wrap;
+}
+
 /* ── Section subheader: dozvoli rast kad ima mnogo dugmadi/filtera ──────────
  *
  * ember-ui/next.css ima fiksnu height: 57px bez dozvole wrapovanja.
