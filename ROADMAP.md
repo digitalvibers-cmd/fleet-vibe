@@ -34,7 +34,7 @@
 - [x] Instalirati Docker + Docker Compose
 - [x] UFW firewall pravila
 
-### 1.2 DNS & Domeni
+#
 
 > Domeni `flyboxdelivery.rs` i `digitalvibe.rs` već postoje.
 > Produkcioni DNS (`fleetvibe.flyboxdelivery.rs`) se podešava na kraju, pred go-live.
@@ -123,9 +123,14 @@
   - [x] PWA ikone (192x192, 512x512)
   - [x] Install CTA banner (prikazuje se samo ulogovanim korisnicima)
   - [ ] Testiranje instalacije na Android Chrome i iOS Safari
-- [x] Dockerizovati portal
+- [x] Dockerizovati portal (Next.js Dockerfile + dev deploy workflow)
+- [x] Dodati u `docker-compose.yml` (dev okruženje)
 - [x] Dodati u `docker-compose.prod.yml` (port 3001, `https://flybox.rs`)
 - [x] Nginx config za portal domen (`flybox.rs`, `www.flybox.rs`)
+- [x] Excel bulk import naloga u portalu (validacija, mapiranje kolona, required/optional fields prikaz)
+- [x] Pretraga po Order ID u portalu
+- [x] UI portala preveden na srpski jezik
+- [x] Auto-send welcome email novim klijentima sa portal URL-om
 
 ### 1.9 Operativni Dashboard & KPI
 
@@ -198,6 +203,9 @@
 - [x] Kreirati Mailgun nalog i verifikovati domen
 - [x] Konfigurisati Mailgun API u Laravel env (docker-compose.override.yml)
 - [x] Email za registraciju i pristup novim korisnicima (pozivnice)
+- [x] Email notifikacija pri kreiranju naloga (OrderCreated) sa email templateom
+- [x] Email notifikacija pri dodeli naloga (OrderAssigned) — lokalizovana na srpski za FlyBox
+- [x] Suppress unwanted UserInvited email pri kreiranju klijenata
 - [ ] Email obaveštenje klijentima o isporučenoj pošiljci
 - [ ] Email template dizajn (FlyBox Delivery branding)
 - [ ] Testirati deliverability (SPF, DKIM, DMARC)
@@ -212,10 +220,13 @@
 
 ### 1.16 Mobile Responsiveness (FleetVibe Konzola)
 
-- [ ] Audit: identifikovati problematične ekrane na mobilnim uređajima
-- [ ] Fix layout za sidebar navigaciju na mobilnim ekranima
+- [x] Audit: identifikovati problematične ekrane na mobilnim uređajima
+- [x] Fix layout za sidebar navigaciju na mobilnim ekranima (fixed navbar, vidljive akcije na svim stranicama)
 - [ ] Responsive tabele (scroll ili card view na malom ekranu)
-- [ ] Responsive forme za kreiranje/editovanje naloga
+- [x] Responsive forme za kreiranje/editovanje naloga (mobile layout za order create panel)
+- [x] Fix overlay panel header — stack naslov i akcioni dugmadi vertikalno na mobilnom
+- [x] Overlay panel scroll fix primenjen globalno (bez sticky header hack-a)
+- [x] Fix autofocus scroll — overlay panel konvertovan u flex column
 - [ ] Responsive mapa (full-width na mobilnom)
 - [ ] Testiranje na iOS Safari i Android Chrome
 - [ ] Fix-evi za touch interakcije (drag & drop, modali)
@@ -230,12 +241,12 @@
 - [ ] Nalozi: create → assign → in progress → complete
 - [ ] Navigator app prima naloge + push notifikacije
 - [ ] Real-time lokacija na mapi
-- [x] Korisnički portal: login, create delivery, lista, izolacija, Google Maps, profil kupca
+- [x] Korisnički portal: login, create delivery, lista, izolacija, Google Maps, profil kupca, Excel import, search, srpski UI, PWA
 - [ ] KPI dashboard sa metrikama
 - [x] CI/CD pipeline radi (dev i prod automatski deploy)
 - [ ] Backup + restore testirani
 - [ ] Monitoring aktivan
-- [/] Email notifikacije (Mailgun) konfigurisane (invite radi, ostali templateovi pending)
+- [/] Email notifikacije (Mailgun) konfigurisane (invite, OrderCreated, OrderAssigned rade — isporuka pending)
 - [ ] SMS/WhatsApp notifikacije funkcionišu
 - [ ] Konzola responsive na mobilnim uređajima
 - [ ] Dokumentacija za sve korisnike
@@ -369,4 +380,6 @@
 | 2026-04-06 | Mailgun konfigurisan za dev okruženje (mailgun driver, EU endpoint). Invite emailovi za nove korisnike rade. |
 | 2026-04-15 | Korisnički portal: fix fokusa na inputu, Google Maps Places Autocomplete, deljeni Header, stranica profila kupca, FlyBox logo branding, fix data izolacije (API cache disabled). |
 | 2026-04-16 | Korisnički portal PWA: manifest, service worker, ikone (192/512), install CTA banner (vidljiv samo ulogovanim korisnicima, respektuje dismiss + standalone mode). |
+| 2026-04-28 | Korisnički portal dockerizovan i dodat u dev deploy workflow. Portal preveden na srpski. Pretraga po Order ID dodata. Excel bulk order import implementiran (validacija, required/optional fields). |
+| 2026-04-28 | Email notifikacije: OrderCreated i OrderAssigned email templateovi implementirani i lokalizovani na srpski. Welcome email novim klijentima. Fix: suppress UserInvited email pri kreiranju klijenata. |
 | 2026-04-29 | Produkcija pokrenuta na flybox.rs. DNS A recordi aktivni. Nginx vhostovi + SSL (Let's Encrypt) za flybox.rs, console.flybox.rs, api.flybox.rs. Docker prod stack up (8 servisa, /opt/fleetvibe-prod). Migracije izvršene. CI/CD dev→prod aktivan. Port konflikt fix: host portovi premješteni iz base compose u env-specific overrides (dev: 4200/8000/3000, prod: 4201/8001/3001). |

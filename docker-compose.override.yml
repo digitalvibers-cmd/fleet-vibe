@@ -29,8 +29,11 @@ services:
       <<: *mail-env
 
   database:
+    command: "--lower-case-table-names=2"
     ports:
       - "33060:3306"
+    volumes:
+      - fleetvibe-mysql-data:/var/lib/mysql
 
   socket:
     ports:
@@ -54,3 +57,7 @@ services:
   customer-portal:
     ports:
       - "3000:3000"
+
+volumes:
+  fleetvibe-mysql-data:
+    external: true

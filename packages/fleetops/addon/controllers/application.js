@@ -1,4 +1,5 @@
 import Controller from '@ember/controller';
+import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
 import { inject as service } from '@ember/service';
 
@@ -10,6 +11,11 @@ export default class ApplicationController extends Controller {
         const allRoutesInactive = this.routes.every((route) => !this.isRouteActive(route));
 
         return this.isRouteActive('console.fleet-ops.operations') || allRoutesInactive || true;
+    }
+
+    @action
+    transitionToNewOrder() {
+        this.hostRouter.transitionTo('console.fleet-ops.operations.orders.index.new');
     }
 
     isRouteActive(route) {
