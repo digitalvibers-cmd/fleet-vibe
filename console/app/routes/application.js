@@ -58,16 +58,12 @@ export default class ApplicationRoute extends Route {
     // eslint-disable-next-line ember/classic-decorator-hooks
     async init() {
         super.init(...arguments);
-        const { shouldInstall, shouldOnboard, defaultTheme } = await this.checkInstallationStatus();
+        const { shouldInstall, defaultTheme } = await this.checkInstallationStatus();
 
         this.defaultTheme = defaultTheme;
 
         if (shouldInstall) {
             return this.router.transitionTo('install');
-        }
-
-        if (shouldOnboard) {
-            return this.router.transitionTo('onboard');
         }
     }
 
