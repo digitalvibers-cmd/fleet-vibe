@@ -119,72 +119,7 @@ export default class ConsoleController extends Controller {
      * @void
      */
     @action createOrJoinOrg() {
-        const currency = this.currentUser.currency;
-        const country = this.currentUser.country;
-
-        this.modalsManager.show('modals/create-or-join-org', {
-            title: this.intl.t('console.create-or-join-organization.modal-title'),
-            acceptButtonText: this.intl.t('common.confirm'),
-            acceptButtonIcon: 'check',
-            acceptButtonIconPrefix: 'fas',
-            action: 'join',
-            next: null,
-            name: null,
-            decription: null,
-            phone: null,
-            currency,
-            country,
-            timezone: null,
-            changeAction: (action) => {
-                this.modalsManager.setOption('action', action);
-            },
-            confirm: async (modal) => {
-                modal.startLoading();
-
-                const { action, next, name, description, phone, currency, country, timezone } = modal.getOptions();
-
-                if (action === 'join') {
-                    try {
-                        await this.fetch.post('auth/join-organization', { next });
-                        this.fetch.flushRequestCache('auth/organizations');
-                        this.notifications.success(this.intl.t('console.create-or-join-organization.join-success-notification'));
-                        return later(
-                            this,
-                            () => {
-                                window.location.reload();
-                            },
-                            900
-                        );
-                    } catch (error) {
-                        modal.stopLoading();
-                        return this.notifications.serverError(error);
-                    }
-                }
-
-                try {
-                    await this.fetch.post('auth/create-organization', {
-                        name,
-                        description,
-                        phone,
-                        currency,
-                        country,
-                        timezone,
-                    });
-                    this.fetch.flushRequestCache('auth/organizations');
-                    this.notifications.success(this.intl.t('console.create-or-join-organization.create-success-notification'));
-                    return later(
-                        this,
-                        () => {
-                            window.location.reload();
-                        },
-                        900
-                    );
-                } catch (error) {
-                    modal.stopLoading();
-                    return this.notifications.serverError(error);
-                }
-            },
-        });
+        this.notifications.warning('Organization management is disabled in this deployment.');
     }
 
     /**
