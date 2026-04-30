@@ -33,7 +33,8 @@ services:
 
   console:
     build:
-      context: ./console
+      context: .
+      dockerfile: console/Dockerfile.dev
       args:
         ENVIRONMENT: production
     ports:
