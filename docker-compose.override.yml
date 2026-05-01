@@ -69,6 +69,3 @@ services:
     environment:
       NEXT_PUBLIC_PORTAL_URL: "https://flybox.rs"
 
-volumes:
-  fleetvibe-mysql-data:
-    external: true
