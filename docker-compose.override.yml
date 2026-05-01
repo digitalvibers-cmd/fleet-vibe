@@ -34,8 +34,6 @@ services:
     command: "--lower-case-table-names=2"
     ports:
       - "33060:3306"
-    volumes:
-      - fleetvibe-mysql-data:/var/lib/mysql
 
   socket:
     ports:
