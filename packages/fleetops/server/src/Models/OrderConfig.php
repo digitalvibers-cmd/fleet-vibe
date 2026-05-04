@@ -5,6 +5,7 @@ namespace Fleetbase\FleetOps\Models;
 use Fleetbase\Casts\Json;
 use Fleetbase\FleetOps\Casts\OrderConfigEntities;
 use Fleetbase\FleetOps\Flow\Activity;
+use Fleetbase\FleetOps\Support\FleetOps;
 use Fleetbase\Models\Company;
 use Fleetbase\Models\Model;
 use Fleetbase\Support\Auth;
@@ -120,6 +121,9 @@ class OrderConfig extends Model
             $model->version   = '0.0.1';
             $model->status    = 'private';
             $model->key       = Str::slug($model->name);
+            if (empty($model->flow)) {
+                $model->flow = FleetOps::getDefaultFlow();
+            }
         });
     }
 
@@ -244,6 +248,9 @@ class OrderConfig extends Model
      */
     public function activities(): Collection
     {
+        if (!$this->flow) {
+            return collect();
+        }
         $activities = collect();
         foreach ($this->flow as $activity) {
             $activities->push(new Activity($activity, $this->flow));
