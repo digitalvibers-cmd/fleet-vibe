@@ -153,8 +153,8 @@ Key project documents:
 
 | Branch | Environment | Domain | Notes |
 |--------|------------|--------|-------|
-| `dev` | **Development** | `fleetvibe.digitalvibe.rs` | Active development, auto-deploy on push |
-| `main` | **Production** | `flybox.rs` / `console.flybox.rs` | Stable releases only, auto-deploy on push |
+| `dev` | **Development** | `fleetvibe.digitalvibe.rs` + `flybox.rs` | Active development, auto-deploy on push |
+| `main` | **Production** | *(prod stack idle — domeni preusmereni na dev)* | Stable releases only, auto-deploy on push |
 
 **Rules:**
 - All development work happens on `dev` or feature branches merged into `dev`.
@@ -163,18 +163,19 @@ Key project documents:
   - Push to `dev` → deploy to dev server
   - Push to `main` → deploy to production server
 
+> **Napomena (2026-05-01):** Nginx portovi na serveru su preusmereni da `flybox.rs` domeni gadjaju dev stack (port 4200/8000/38000/3000) umesto prod stack-a. Prod stack (`/opt/fleetvibe-prod/`) i dalje radi na portovima 4201/8001/38001/3001, ali nije javno dostupan dok se ne restoruju Nginx konfiguracije.
+
 ## Environments
 
-### Development
-- **Console**: `https://fleetvibe.digitalvibe.rs`
-- **API**: `https://apifleetvibe.digitalvibe.rs`
-- **Portal**: `https://portal-fleetvibe.digitalvibe.rs`
-- No basic auth, open for testing
+### Development (aktivni javni domeni)
+- **Console**: `https://console.flybox.rs` → dev stack (port 4200)
+- **API**: `https://api.flybox.rs` → dev stack (port 8000)
+- **Portal**: `https://flybox.rs` → dev stack (port 3000)
+- Interno (direktno na dev serveru): `https://fleetvibe.digitalvibe.rs`
 
-### Production
-- **Portal** (customer-facing): `https://flybox.rs`
-- **Console** (internal ops): `https://console.flybox.rs`
-- **API**: `https://api.flybox.rs`
+### Production (idle — Nginx preusmereni na dev)
+- Prod stack živi na `/opt/fleetvibe-prod/`, portovi 4201/8001/3001
+- Da se vrati na prod: promeniti Nginx portove nazad na prod vrednosti i `nginx -s reload`
 
 ## Infrastructure
 
@@ -235,6 +236,22 @@ if ($order->company_uuid && session()->missing('company')) {
     session(['company' => $order->company_uuid]);
 }
 ```
+
+### SSH Access to Server
+
+Two SSH users on `46.225.99.48`:
+
+| User | Key | When to use |
+|------|-----|-------------|
+| `root` | `~/.ssh/id_ed25519` (local machine) | Direct admin/debug access from dev machine |
+| `deploy` | `HETZNER_DEPLOY_SSH_KEY` (GitHub Actions secret) | CI/CD automated deploys only |
+
+```bash
+ssh root@46.225.99.48          # local admin access
+ssh deploy@46.225.99.48        # only works from GitHub Actions (different key)
+```
+
+The `deploy` user is **not** accessible from the local machine — only through GitHub Actions. For manual intervention (container restarts, migration runs, debugging), always use `root`.
 
 ### Dev and prod stacks on the same server
 
