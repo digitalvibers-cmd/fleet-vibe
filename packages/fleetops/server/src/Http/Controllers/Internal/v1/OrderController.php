@@ -802,8 +802,12 @@ class OrderController extends FleetOpsController
             return response()->error('No order found.');
         }
 
-        $waypoint   = $request->filled('waypoint') ? Waypoint::findByPlace($request->input('waypoint'), $order) : null;
-        $activities = $order->config()->nextActivity($waypoint);
+        $waypoint    = $request->filled('waypoint') ? Waypoint::findByPlace($request->input('waypoint'), $order) : null;
+        $orderConfig = $order->config();
+        if (!$orderConfig) {
+            return response()->json([]);
+        }
+        $activities = $orderConfig->nextActivity($waypoint);
 
         // If activity is to complete order add proof of delivery properties if required
         // This is a temporary fix until activity is updated to handle POD on it's own
