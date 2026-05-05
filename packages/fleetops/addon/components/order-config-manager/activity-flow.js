@@ -241,6 +241,8 @@ export default class OrderConfigManagerActivityFlowComponent extends Component {
         const flow = this.serializeFlow();
         this.config.set('flow', flow);
         yield this.config.save().then((config) => {
+            this.graph.clear();
+            this.flow = {};
             this.config = config;
             this.initializeActivityFlow();
             this.listenForElementClicks();
