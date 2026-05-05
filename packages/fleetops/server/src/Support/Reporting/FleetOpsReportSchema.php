@@ -178,6 +178,14 @@ class FleetOpsReportSchema implements ReportSchema
                 Column::avg('average_time', 'time')
                     ->label('Average Time')
                     ->description('Average duration per order'),
+
+                Column::sum('total_earnings', 'amount')
+                    ->label('Total Earnings')
+                    ->description('Sum of all order amounts'),
+
+                Column::avg('average_earnings', 'amount')
+                    ->label('Average Earnings')
+                    ->description('Average order amount'),
             ])
             ->relationships([
                 // Auto-join relationships for seamless access
@@ -220,6 +228,7 @@ class FleetOpsReportSchema implements ReportSchema
                     ->localKey('driver_assigned_uuid')
                     ->foreignKey('uuid')
                     ->columns([
+                        Column::make('name', 'string')->label('Driver Name'),
                         Column::make('drivers_license_number', 'string')->label('License Number'),
                         Column::make('country', 'string')->label('Country'),
                         Column::make('city', 'string')->label('City'),
@@ -271,6 +280,29 @@ class FleetOpsReportSchema implements ReportSchema
                         Column::make('email', 'string')->label('Email'),
                         Column::make('phone', 'string')->label('Phone'),
                         Column::make('type', 'string')->label('Type'),
+                    ]),
+
+                Relationship::hasAutoJoin('purchase_rate', 'purchase_rates')
+                    ->label('Pricing')
+                    ->localKey('purchase_rate_uuid')
+                    ->foreignKey('uuid')
+                    ->with([
+                        Relationship::hasAutoJoin('service_quote', 'service_quotes')
+                            ->label('Service Quote')
+                            ->localKey('service_quote_uuid')
+                            ->foreignKey('uuid')
+                            ->columns([
+                                Column::make('amount', 'decimal')
+                                    ->label('Order Amount')
+                                    ->description('Amount billed for this order')
+                                    ->aggregatable()
+                                    ->sortable(),
+                                Column::make('currency', 'string')
+                                    ->label('Currency')
+                                    ->description('Billing currency')
+                                    ->filterable()
+                                    ->aggregatable(),
+                            ]),
                     ]),
             ]);
     }
