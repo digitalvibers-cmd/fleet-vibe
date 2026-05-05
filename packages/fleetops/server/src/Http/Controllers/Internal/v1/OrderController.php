@@ -129,8 +129,15 @@ class OrderController extends FleetOpsController
                         $input['status'] = 'created';
                     }
 
-                    // Set order config
-                    if (!isset($input['order_config_uuid'])) {
+                    // Resolve order_config_uuid — frontend sends public_id, backend needs actual UUID
+                    if (isset($input['order_config_uuid']) && !Str::isUuid($input['order_config_uuid'])) {
+                        $resolved = OrderConfig::where('public_id', $input['order_config_uuid'])
+                            ->where('company_uuid', session('company'))
+                            ->first();
+                        $input['order_config_uuid'] = $resolved ? $resolved->uuid : null;
+                    }
+
+                    if (!isset($input['order_config_uuid']) || !$input['order_config_uuid']) {
                         $defaultOrderConfig = OrderConfig::default();
                         if ($defaultOrderConfig) {
                             $input['order_config_uuid'] = $defaultOrderConfig->uuid;
@@ -623,8 +630,15 @@ class OrderController extends FleetOpsController
             return response()->error('No order found to dispatch.');
         }
 
-        // if order has no config set, set default config
+        // if order has no config, first try to resolve stored public_id to UUID (frontend sends public_id on create)
         $order->loadMissing('orderConfig');
+        if (!$order->orderConfig && $order->order_config_uuid && !Str::isUuid($order->order_config_uuid)) {
+            $resolved = OrderConfig::where('public_id', $order->order_config_uuid)->first();
+            if ($resolved) {
+                $order->update(['order_config_uuid' => $resolved->uuid]);
+                $order->loadMissing('orderConfig');
+            }
+        }
         if (!$order->orderConfig) {
             $defaultOrderConfig = OrderConfig::default();
             if ($defaultOrderConfig) {
