@@ -51,16 +51,12 @@ export default function DashboardPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ sort: "-created_at", limit: "50" });
-      if (dateFrom) params.set("after", dateFrom);
-      if (dateTo) params.set("before", dateTo);
       if (searchQuery) params.set("query", searchQuery);
 
       const res = await fetch(`/api/orders?${params}`);
@@ -75,7 +71,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [dateFrom, dateTo, searchQuery, router]);
+  }, [searchQuery, router]);
 
   useEffect(() => {
     fetchOrders();
@@ -89,28 +85,6 @@ export default function DashboardPage() {
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
         {/* Filters */}
         <div className="mb-6 flex flex-wrap items-end gap-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Od
-            </label>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="rounded-xl border border-border px-3 py-2 text-sm outline-none focus:border-primary"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Do
-            </label>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="rounded-xl border border-border px-3 py-2 text-sm outline-none focus:border-primary"
-            />
-          </div>
           <div className="flex-1 min-w-[200px]">
             <label className="mb-1 block text-xs font-medium text-muted-foreground">
               Pretraži po ID narudžbine
@@ -138,13 +112,9 @@ export default function DashboardPage() {
             <Search className="h-3.5 w-3.5" />
             Filtriraj
           </button>
-          {(dateFrom || dateTo || searchQuery) && (
+          {searchQuery && (
             <button
-              onClick={() => {
-                setDateFrom("");
-                setDateTo("");
-                setSearchQuery("");
-              }}
+              onClick={() => setSearchQuery("")}
               className="text-sm text-primary hover:underline"
             >
               Obriši
