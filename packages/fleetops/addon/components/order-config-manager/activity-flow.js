@@ -318,6 +318,9 @@ export default class OrderConfigManagerActivityFlowComponent extends Component {
      * @returns {Object} Deserialized activity object.
      */
     deserializeActivity(activityObject, incomingFlow) {
+        if (!activityObject) {
+            return null;
+        }
         const activity = createFlowActivity(activityObject.code, activityObject.status, activityObject.details, activityObject.sequence, activityObject.color, {
             key: activityObject.key,
             logic: activityObject.logic ?? [],
