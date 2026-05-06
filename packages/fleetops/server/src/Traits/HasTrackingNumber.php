@@ -210,11 +210,11 @@ trait HasTrackingNumber
      *
      * @return string the resolved template string, or the original on fallback
      */
-    private function resolveActivityTemplateString(string $template): string
+    private function resolveActivityTemplateString(?string $template): string
     {
-        // Fast path: no placeholders to resolve.
-        if ($template === '' || strpos($template, '{') === false) {
-            return $template;
+        // Fast path: null/empty/no placeholders to resolve.
+        if ($template === null || $template === '' || strpos($template, '{') === false) {
+            return $template ?? '';
         }
 
         // Determine which model should resolve dynamic properties.
