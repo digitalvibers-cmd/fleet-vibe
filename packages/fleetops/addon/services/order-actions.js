@@ -6,6 +6,8 @@ import { task } from 'ember-concurrency';
 
 export default class OrderActionsService extends ResourceActionService {
     @service store;
+    @service orderConfigActions;
+    @service serviceRateActions;
     modelNamePath = 'tracking';
 
     constructor() {
@@ -300,13 +302,48 @@ export default class OrderActionsService extends ResourceActionService {
         });
     }
 
-    @action editOrderDetails(order, options = {}) {
+    @action async editOrderDetails(order, options = {}) {
         options = options === null ? {} : options;
+
+        await this.orderConfigActions.loadAll.perform();
+        let initialServiceRates = [];
+        if (order.order_config) {
+            initialServiceRates = (await this.serviceRateActions.queryServiceRatesForOrder.perform(order)) || [];
+        }
 
         this.modalsManager.show('modals/order-form', {
             title: this.intl.t('order.actions.edit-order-details'),
             acceptButtonText: this.intl.t('common.save-changes'),
             acceptButtonIcon: 'save',
+            orderConfigs: this.orderConfigActions.allOrderConfigs,
+            serviceRates: initialServiceRates,
+            selectedServiceRate: null,
+            setOrderConfig: async (orderConfig) => {
+                if (!orderConfig) return;
+                order.setProperties({
+                    order_config_uuid: orderConfig.id,
+                    order_config: orderConfig,
+                    type: orderConfig.key,
+                });
+                order.set('service_quote_uuid', null);
+                this.modalsManager.setOptions('selectedServiceRate', null);
+                this.modalsManager.setOptions('serviceRates', []);
+                const rates = (await this.serviceRateActions.queryServiceRatesForOrder.perform(order)) || [];
+                this.modalsManager.setOptions('serviceRates', rates);
+            },
+            setServiceRate: async (serviceRate) => {
+                this.modalsManager.setOptions('selectedServiceRate', serviceRate);
+                if (!serviceRate) {
+                    order.set('service_quote_uuid', null);
+                    return;
+                }
+                const quotes = await this.serviceRateActions.getServiceQuotes.perform(serviceRate, order);
+                if (quotes && quotes.length) {
+                    order.set('service_quote_uuid', quotes[0].uuid);
+                } else {
+                    this.notifications.warning(this.intl.t('order.fields.no-service-quotes'));
+                }
+            },
             setOrderFacilitator: (model) => {
                 order.set('facilitator', model);
                 order.set('facilitator_type', `fleet-ops:${model.facilitator_type}`);

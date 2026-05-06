@@ -3,6 +3,43 @@
         <div class="grid grid-cols-2 gap-4 text-xs dark:text-gray-100">
             <InputGroup @name={{t "common.internal-id"}} @value={{@options.order.internal_id}} @helpText={{t "order.fields.id-text"}} />
 
+            <InputGroup @name={{t "order.fields.order-type"}} @helpText={{t "order.fields.order-type-help-text"}}>
+                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                    <PowerSelect
+                        @options={{@options.orderConfigs}}
+                        @selected={{@options.order.order_config}}
+                        @onChange={{@options.setOrderConfig}}
+                        @placeholder={{t "order.fields.order-type-placeholder"}}
+                        @triggerClass="form-select form-input"
+                        @renderInPlace={{true}}
+                        as |orderConfig|
+                    >
+                        <div class="text-sm">
+                            <div class="font-semibold normalize-in-trigger">{{orderConfig.name}}</div>
+                        </div>
+                    </PowerSelect>
+                </div>
+            </InputGroup>
+
+            <InputGroup @name={{t "order.fields.select-service-rate"}} @helpText={{t "order.fields.service-quotes-help-text"}}>
+                <div class="fleetbase-model-select fleetbase-power-select ember-model-select">
+                    <PowerSelect
+                        @options={{@options.serviceRates}}
+                        @selected={{@options.selectedServiceRate}}
+                        @onChange={{@options.setServiceRate}}
+                        @placeholder={{t "order.fields.select-service-rate"}}
+                        @triggerClass="form-select form-input"
+                        @renderInPlace={{true}}
+                        @disabled={{not @options.order.order_config}}
+                        as |serviceRate|
+                    >
+                        <div class="text-sm">
+                            <div class="font-semibold normalize-in-trigger">{{serviceRate.service_name}}</div>
+                        </div>
+                    </PowerSelect>
+                </div>
+            </InputGroup>
+
             <div class="input-group">
                 <InputLabel @labelText={{t "order.fields.date-scheduled"}} @helpText={{t "order.fields.schedule-help-text"}} />
                 <DateTimeInput
