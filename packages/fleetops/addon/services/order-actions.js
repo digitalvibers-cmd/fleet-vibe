@@ -306,10 +306,9 @@ export default class OrderActionsService extends ResourceActionService {
         options = options === null ? {} : options;
 
         await this.orderConfigActions.loadAll.perform();
-        let initialServiceRates = [];
-        if (order.order_config) {
-            initialServiceRates = (await this.serviceRateActions.queryServiceRatesForOrder.perform(order)) || [];
-        }
+        const allServiceRates = (await this.store.query('service-rate', {})).toArray();
+        const ratesForConfig = (configUuid) => (configUuid ? allServiceRates.filter((r) => r.order_config_uuid === configUuid) : []);
+        const initialServiceRates = ratesForConfig(order.order_config_uuid);
 
         this.modalsManager.show('modals/order-form', {
             title: this.intl.t('order.actions.edit-order-details'),
@@ -327,9 +326,7 @@ export default class OrderActionsService extends ResourceActionService {
                 });
                 order.set('service_quote_uuid', null);
                 this.modalsManager.setOptions('selectedServiceRate', null);
-                this.modalsManager.setOptions('serviceRates', []);
-                const rates = (await this.serviceRateActions.queryServiceRatesForOrder.perform(order)) || [];
-                this.modalsManager.setOptions('serviceRates', rates);
+                this.modalsManager.setOptions('serviceRates', ratesForConfig(orderConfig.id));
             },
             setServiceRate: async (serviceRate) => {
                 this.modalsManager.setOptions('selectedServiceRate', serviceRate);
@@ -337,11 +334,15 @@ export default class OrderActionsService extends ResourceActionService {
                     order.set('service_quote_uuid', null);
                     return;
                 }
-                const quotes = await this.serviceRateActions.getServiceQuotes.perform(serviceRate, order);
-                if (quotes && quotes.length) {
-                    order.set('service_quote_uuid', quotes[0].uuid);
-                } else {
-                    this.notifications.warning(this.intl.t('order.fields.no-service-quotes'));
+                try {
+                    const quotes = await this.serviceRateActions.getServiceQuotes.perform(serviceRate, order);
+                    if (quotes && quotes.length) {
+                        order.set('service_quote_uuid', quotes[0].uuid);
+                    } else {
+                        this.notifications.warning(this.intl.t('order.fields.no-service-quotes'));
+                    }
+                } catch (err) {
+                    this.notifications.serverError(err);
                 }
             },
             setOrderFacilitator: (model) => {
