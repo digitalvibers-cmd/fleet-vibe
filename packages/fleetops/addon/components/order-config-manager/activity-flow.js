@@ -239,11 +239,8 @@ export default class OrderConfigManagerActivityFlowComponent extends Component {
      */
     @task *save() {
         const flow = this.serializeFlow();
-        console.log('[ActivityFlow.save] flow keys BEFORE save:', Object.keys(flow));
         this.config.set('flow', flow);
         yield this.config.save().then((config) => {
-            const responseFlowKeys = config.flow ? Object.keys(config.flow) : [];
-            console.log('[ActivityFlow.save] config.flow keys AFTER save:', responseFlowKeys);
             this.graph.clear();
             this.flow = {};
             this.config = config;
@@ -276,7 +273,6 @@ export default class OrderConfigManagerActivityFlowComponent extends Component {
     serializeFlow() {
         const serialized = {};
         const keys = Object.keys(this.flow);
-        console.log('[ActivityFlow.serializeFlow] this.flow keys:', keys);
         keys.forEach((key) => {
             const activity = this.flow[key];
             // remove node
@@ -290,9 +286,9 @@ export default class OrderConfigManagerActivityFlowComponent extends Component {
             const activities = activity.get('activities');
             activity.set(
                 'activities',
-                activities.map((_activity) => {
-                    return _activity.get('code');
-                })
+                activities
+                    .filter((_activity) => _activity.get('node'))
+                    .map((_activity) => _activity.get('code'))
             );
             serialized[key] = activity.content;
         });
@@ -569,7 +565,7 @@ export default class OrderConfigManagerActivityFlowComponent extends Component {
      */
     createActivityNode(activity, positionals = {}) {
         const { width, height, x, y } = positionals;
-        const wrappedDetails = joint.util.breakText(activity.get('details'), { width });
+        const wrappedDetails = joint.util.breakText(activity.get('details') ?? '', { width });
         const activityNode = new joint.shapes.fleetbase.Activity({
             position: { x, y },
             size: { width, height },
@@ -619,7 +615,7 @@ export default class OrderConfigManagerActivityFlowComponent extends Component {
         const width = 250;
         const baseHeight = 90;
         const lineHeight = 10;
-        const wrappedDetails = joint.util.breakText(activity.get('details'), { width });
+        const wrappedDetails = joint.util.breakText(activity.get('details') ?? '', { width });
         const numberOfLines = wrappedDetails.split('\n').length;
         const height = baseHeight + lineHeight * (numberOfLines - 1);
         let x = 100;
