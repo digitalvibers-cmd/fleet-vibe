@@ -239,8 +239,11 @@ export default class OrderConfigManagerActivityFlowComponent extends Component {
      */
     @task *save() {
         const flow = this.serializeFlow();
+        console.log('[ActivityFlow.save] flow keys BEFORE save:', Object.keys(flow));
         this.config.set('flow', flow);
         yield this.config.save().then((config) => {
+            const responseFlowKeys = config.flow ? Object.keys(config.flow) : [];
+            console.log('[ActivityFlow.save] config.flow keys AFTER save:', responseFlowKeys);
             this.graph.clear();
             this.flow = {};
             this.config = config;
@@ -273,6 +276,7 @@ export default class OrderConfigManagerActivityFlowComponent extends Component {
     serializeFlow() {
         const serialized = {};
         const keys = Object.keys(this.flow);
+        console.log('[ActivityFlow.serializeFlow] this.flow keys:', keys);
         keys.forEach((key) => {
             const activity = this.flow[key];
             // remove node
@@ -305,7 +309,9 @@ export default class OrderConfigManagerActivityFlowComponent extends Component {
         const keys = Object.keys(incomingFlow);
         keys.forEach((key) => {
             const activity = this.deserializeActivity(incomingFlow[key], incomingFlow);
-            deserializedFlow[activity.get('code')] = activity;
+            if (activity) {
+                deserializedFlow[activity.get('code')] = activity;
+            }
         });
 
         this.addDeserializedActivityToGraph(deserializedFlow.created);
