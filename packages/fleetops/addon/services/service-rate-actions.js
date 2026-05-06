@@ -122,8 +122,8 @@ export default class ServiceRateActionsService extends ResourceActionService {
         try {
             const serviceQuotes = yield this.fetch.post('service-quotes/preliminary', {
                 payload: serializePayload(order.payload),
-                distance: order.route.summary?.totalDistance,
-                time: order.route.summary?.totalTime,
+                distance: order.route?.summary?.totalDistance ?? order.distance,
+                time: order.route?.summary?.totalTime ?? order.time,
                 service_type: hasFacilitator ? facilitatorServiceType : order.type,
                 facilitator: order.facilitator?.public_id,
                 scheduled_at: order.scheduled_at,
