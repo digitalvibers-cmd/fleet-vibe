@@ -325,11 +325,13 @@ export default class OrderActionsService extends ResourceActionService {
                     type: orderConfig.key,
                 });
                 order.set('service_quote_uuid', null);
-                this.modalsManager.setOptions('selectedServiceRate', null);
-                this.modalsManager.setOptions('serviceRates', ratesForConfig(orderConfig.id));
+                this.modalsManager.setOptions({
+                    selectedServiceRate: null,
+                    serviceRates: ratesForConfig(orderConfig.id),
+                });
             },
             setServiceRate: async (serviceRate) => {
-                this.modalsManager.setOptions('selectedServiceRate', serviceRate);
+                this.modalsManager.setOption('selectedServiceRate', serviceRate);
                 if (!serviceRate) {
                     order.set('service_quote_uuid', null);
                     return;
