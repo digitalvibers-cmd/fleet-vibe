@@ -832,8 +832,8 @@ class OrderController extends FleetOpsController
             }
 
             // resolved status and details
-            $activity->set('_resolved_status', TemplateString::resolve($activity->get('status', ''), $order));
-            $activity->set('_resolved_details', TemplateString::resolve($activity->get('details', ''), $order));
+            $activity->set('_resolved_status', TemplateString::resolve((string) ($activity->get('status') ?? ''), $order));
+            $activity->set('_resolved_details', TemplateString::resolve((string) ($activity->get('details') ?? ''), $order));
 
             return $activity;
         });
