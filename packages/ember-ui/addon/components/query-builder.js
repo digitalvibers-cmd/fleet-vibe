@@ -77,17 +77,52 @@ export default class QueryBuilderComponent extends Component {
         return allColumns;
     }
 
+    get resolvedTable() {
+        if (this.table && !this.table.columns && this.args.tables?.length) {
+            return this.args.tables.find((t) => t.name === this.table.name) ?? this.table;
+        }
+        return this.table;
+    }
+
     get queryObject() {
+        // Schema-defined computed columns (computed: true with computation expression) must be
+        // routed to computed_columns with the `expression` key, not into the regular `columns` array
+        const schemaComputedCols = this.selectedColumns.filter((c) => c.computed && c.computation);
+        const regularCols = this.selectedColumns.filter((c) => !c.computed || !c.computation);
+
+        const columns = regularCols.map((column) => ({
+            ...column,
+            alias: this.columnAliases[column.name] || null,
+        }));
+
+        const schemaComputedForQuery = schemaComputedCols.map((c) => ({
+            name: c.name,
+            expression: c.computation,
+            type: c.type ?? 'decimal',
+            label: c.label ?? c.name,
+            computed: true,
+        }));
+        const allComputedColumns = [...(this.computedColumns || []), ...schemaComputedForQuery];
+
+        // When GROUP BY is active, auto-add any selected non-grouped, non-computed column as a
+        // dimension-only groupBy item so the backend doesn't reject the query under ONLY_FULL_GROUP_BY
+        let groupBy = [...this.groupBy];
+        if (groupBy.length > 0) {
+            const groupedNames = new Set(groupBy.map((g) => g.groupBy?.name).filter(Boolean));
+            for (const col of columns) {
+                if (!groupedNames.has(col.name)) {
+                    groupBy = [...groupBy, { id: `auto_dim_${col.name}`, groupBy: col }];
+                }
+            }
+        }
+
         return {
             table: this.table,
-            columns: this.selectedColumns.map((column) => ({
-                ...column,
-                alias: this.columnAliases[column.name] || null,
-            })),
-            computed_columns: this.computedColumns,
+            columns,
+            computed_columns: allComputedColumns,
             joins: this.joins,
             conditions: this.conditions,
-            groupBy: this.groupBy,
+            groupBy,
             sortBy: this.sortBy,
             limit: this.limit,
         };
@@ -145,7 +180,11 @@ export default class QueryBuilderComponent extends Component {
 
     @action
     loadFromQuery(queryData) {
-        if (queryData.table) this.table = queryData.table;
+        if (queryData.table) {
+            const tableName = queryData.table.name ?? queryData.table;
+            const fullTable = this.args.tables?.find((t) => t.name === tableName) ?? queryData.table;
+            this.table = fullTable;
+        }
         if (queryData.columns) {
             this.selectedColumns = queryData.columns;
             // Extract aliases
