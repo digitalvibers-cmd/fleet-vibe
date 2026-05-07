@@ -17,8 +17,8 @@ ARG ENVIRONMENT=development
 COPY console/package.json console/pnpm-lock.yaml ./
 COPY console/.npmr[c] ./
 
-# Install global dependencies
-RUN npm install -g ember-cli pnpm
+# Install global dependencies (pnpm pinned — newer versions need Node 20+)
+RUN npm install -g ember-cli pnpm@8.15.9
 
 # Install git
 RUN apk update && apk add git openssh-client
