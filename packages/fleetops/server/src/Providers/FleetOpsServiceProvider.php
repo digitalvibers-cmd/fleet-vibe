@@ -4,9 +4,13 @@ namespace Fleetbase\FleetOps\Providers;
 
 use Brick\Geo\Engine\GeometryEngineRegistry;
 use Brick\Geo\Engine\GEOSEngine;
+use Fleetbase\Models\User;
+use Fleetbase\Notifications\UserInvited;
 use Fleetbase\Providers\CoreServiceProvider;
 use Fleetbase\Support\NotificationRegistry;
 use Fleetbase\Support\Utils;
+use Illuminate\Notifications\Events\NotificationSending;
+use Illuminate\Support\Facades\Notification;
 
 if (!Utils::classExists(CoreServiceProvider::class)) {
     throw new \Exception('FleetOps cannot be loaded without `fleetbase/core-api` installed!');
@@ -94,6 +98,17 @@ class FleetOpsServiceProvider extends CoreServiceProvider
         $this->registerObservers();
         // LogiVibe: register extra observer to auto-send welcome email to new customers
         \Fleetbase\FleetOps\Models\Contact::observe(\Fleetbase\FleetOps\Observers\CustomerContactObserver::class);
+
+        // LogiVibe: customer-type users receive portal credentials via
+        // CustomerCredentialsMail. Suppress the default Fleetbase UserInvited
+        // (console invite) email that User::assignCompany() auto-dispatches.
+        Notification::sending(function (NotificationSending $event) {
+            if ($event->notification instanceof UserInvited
+                && $event->notifiable instanceof User
+                && $event->notifiable->type === 'customer') {
+                return false;
+            }
+        });
         $this->registerCommands();
         $this->scheduleCommands(function ($schedule) {
             $schedule->command('fleetops:dispatch-orders')->everyMinute()->withoutOverlapping()->storeOutputInDb();
