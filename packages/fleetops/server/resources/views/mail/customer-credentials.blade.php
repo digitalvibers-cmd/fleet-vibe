@@ -17,6 +17,6 @@ Your Email: {{ $customer->user->email }}
 Your Password: {{ $plaintextPassword }}
 <br />
 <br />
-Za pristup klijentskom portalu: <a href="https://portal-fleetvibe.digitalvibe.rs">https://portal-fleetvibe.digitalvibe.rs</a>
+Za pristup klijentskom portalu: <a href="https://flybox.rs">https://flybox.rs</a>
 
 </x-mail-layout>
