@@ -353,15 +353,9 @@ class Contact extends Model
         // Assing to company
         $user->assignCompany($contact->company, $user->type === 'customer' ? 'Fleet-Ops Customer' : 'Fleet-Ops Contact');
 
-        // LogiVibe: assignCompany internally creates a join_company Invite and dispatches
-        // UserInvited (console access email). For customers we send portal credentials
-        // via CustomerCredentialsMail instead, so delete that invite immediately.
-        if ($user->type === 'customer' && $user->email) {
-            Invite::where('company_uuid', $user->company_uuid)
-                ->where('reason', 'join_company')
-                ->whereJsonContains('recipients', $user->email)
-                ->delete();
-        }
+        // LogiVibe: assignCompany() dispatches a UserInvited notification. For
+        // customer-type users it is suppressed via Notification::sending listener
+        // in App\Providers\AppServiceProvider — see boot().
 
         // Assign customer role
         if ($user->type === 'customer') {
