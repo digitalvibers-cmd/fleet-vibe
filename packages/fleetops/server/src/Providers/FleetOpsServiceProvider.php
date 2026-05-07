@@ -10,7 +10,7 @@ use Fleetbase\Providers\CoreServiceProvider;
 use Fleetbase\Support\NotificationRegistry;
 use Fleetbase\Support\Utils;
 use Illuminate\Notifications\Events\NotificationSending;
-use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Event;
 
 if (!Utils::classExists(CoreServiceProvider::class)) {
     throw new \Exception('FleetOps cannot be loaded without `fleetbase/core-api` installed!');
@@ -102,7 +102,7 @@ class FleetOpsServiceProvider extends CoreServiceProvider
         // LogiVibe: customer-type users receive portal credentials via
         // CustomerCredentialsMail. Suppress the default Fleetbase UserInvited
         // (console invite) email that User::assignCompany() auto-dispatches.
-        Notification::sending(function (NotificationSending $event) {
+        Event::listen(NotificationSending::class, function (NotificationSending $event) {
             if ($event->notification instanceof UserInvited
                 && $event->notifiable instanceof User
                 && $event->notifiable->type === 'customer') {
