@@ -4,10 +4,10 @@
             actions=(component "query-builder/actions" onClear=this.onClear onExecute=this.onExecute onSave=this.onSave)
             select=(component "query-builder/table-select" table=this.table tables=@tables onChange=(fn this.callbackChange "table"))
             columns=(component
-                "query-builder/column-select" columns=this.table.columns selectedColumns=this.selectedColumns columnAliases=this.columnAliases onChange=(fn this.callbackChange "columns")
+                "query-builder/column-select" columns=this.resolvedTable.columns selectedColumns=this.selectedColumns columnAliases=this.columnAliases onChange=(fn this.callbackChange "columns")
             )
             computedColumns=(component
-                "query-builder/computed-columns" computedColumns=this.computedColumns table=this.table tableName=this.table.name onChange=(fn this.callbackChange "computedColumns")
+                "query-builder/computed-columns" computedColumns=this.computedColumns table=this.resolvedTable tableName=this.resolvedTable.name onChange=(fn this.callbackChange "computedColumns")
             )
             group=(component
                 "query-builder/group-by"
@@ -26,10 +26,10 @@
                 onChange=(fn this.callbackChange "sortBy")
             )
             limit=(component "query-builder/limit" limit=this.limit onChange=(fn this.callbackChange "limit"))
-            joins=(component "query-builder/joins" table=this.table relationships=this.table.relationships onChange=(fn this.callbackChange "joins"))
+            joins=(component "query-builder/joins" table=this.resolvedTable relationships=this.resolvedTable.relationships onChange=(fn this.callbackChange "joins"))
             conditions=(component
                 "query-builder/conditions"
-                table=this.table
+                table=this.resolvedTable
                 columns=this.columns
                 selectedColumns=this.selectedColumns
                 allSelectedColumns=this.allSelectedColumns
@@ -45,7 +45,7 @@
             <QueryBuilder::Actions @onClear={{this.onClear}} @onExecute={{this.onExecute}} @onSave={{this.onSave}} class="col-span-2" />
             <QueryBuilder::TableSelect @table={{this.table}} @tables={{@tables}} @onChange={{fn this.callbackChange "table"}} class="col-span-2" />
             <QueryBuilder::ColumnSelect
-                @columns={{this.table.columns}}
+                @columns={{this.resolvedTable.columns}}
                 @selectedColumns={{this.selectedColumns}}
                 @columnAliases={{this.columnAliases}}
                 @onChange={{fn this.callbackChange "columns"}}
@@ -53,8 +53,8 @@
             />
             <QueryBuilder::ComputedColumns
                 @computedColumns={{this.computedColumns}}
-                @table={{this.table}}
-                @tableName={{this.table.name}}
+                @table={{this.resolvedTable}}
+                @tableName={{this.resolvedTable.name}}
                 @onChange={{fn this.callbackChange "computedColumns"}}
                 class="col-span-2"
             />
@@ -73,9 +73,9 @@
                 @onChange={{fn this.callbackChange "sortBy"}}
             />
             <QueryBuilder::Limit @limit={{this.limit}} @onChange={{fn this.callbackChange "limit"}} class="col-span-2" />
-            <QueryBuilder::Joins @table={{this.table}} @relationships={{this.table.relationships}} @onChange={{fn this.callbackChange "joins"}} class="col-span-2" />
+            <QueryBuilder::Joins @table={{this.resolvedTable}} @relationships={{this.resolvedTable.relationships}} @onChange={{fn this.callbackChange "joins"}} class="col-span-2" />
             <QueryBuilder::Conditions
-                @table={{this.table}}
+                @table={{this.resolvedTable}}
                 @columns={{this.columns}}
                 @selectedColumns={{this.selectedColumns}}
                 @allSelectedColumns={{this.allSelectedColumns}}

@@ -179,13 +179,18 @@ class FleetOpsReportSchema implements ReportSchema
                     ->label('Average Time')
                     ->description('Average duration per order'),
 
-                Column::sum('total_earnings', 'amount')
+                Column::sum('total_earnings', 'purchase_rate.service_quote.amount')
                     ->label('Total Earnings')
                     ->description('Sum of all order amounts'),
 
-                Column::avg('average_earnings', 'amount')
+                Column::avg('average_earnings', 'purchase_rate.service_quote.amount')
                     ->label('Average Earnings')
                     ->description('Average order amount'),
+
+                Column::computed('order_amount', 'purchase_rate.service_quote.amount', 'decimal')
+                    ->label('Order Amount')
+                    ->description('Amount charged for this individual order')
+                    ->aggregatable(),
             ])
             ->relationships([
                 // Auto-join relationships for seamless access

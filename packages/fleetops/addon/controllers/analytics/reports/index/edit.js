@@ -20,24 +20,16 @@ export default class AnalyticsReportsIndexEditController extends Controller {
     @task *save(report) {
         try {
             yield report.validate();
+            yield report.save();
+            this.overlay?.close();
 
-            try {
-                const result = yield report.execute();
-                report.fillResult(result);
-
-                yield report.save();
-                this.overlay?.close();
-
-                yield this.hostRouter.transitionTo('console.fleet-ops.analytics.reports.index.details', report);
-                this.notifications.success(
-                    this.intl.t('common.resource-updated-success', {
-                        resource: this.intl.t('resource.report'),
-                        resourceName: report.title,
-                    })
-                );
-            } catch (err) {
-                this.notifications.serverError(err);
-            }
+            yield this.hostRouter.transitionTo('console.fleet-ops.analytics.reports.index.details', report);
+            this.notifications.success(
+                this.intl.t('common.resource-updated-success', {
+                    resource: this.intl.t('resource.report'),
+                    resourceName: report.title,
+                })
+            );
         } catch (err) {
             if (err.message) {
                 this.notifications.error(err?.validation_errors?.firstObject ?? err?.message ?? 'Error validating report configuration');

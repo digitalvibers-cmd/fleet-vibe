@@ -39,6 +39,15 @@ RUN REAL_PATH=$(readlink -f node_modules/@fleetbase/fleetops-engine) && \
     cp -r /tmp/_fleetops_app/*   "$REAL_PATH/app/" && \
     rm -rf /tmp/_fleetops_addon /tmp/_fleetops_app
 
+# Same overlay pattern for ember-ui — must resolve pnpm symlink with readlink.
+COPY packages/ember-ui/addon/ /tmp/_ember_ui_addon/
+COPY packages/ember-ui/app/   /tmp/_ember_ui_app/
+RUN REAL_PATH=$(readlink -f node_modules/@fleetbase/ember-ui) && \
+    echo "Overlaying local ember-ui into: $REAL_PATH" && \
+    cp -r /tmp/_ember_ui_addon/* "$REAL_PATH/addon/" && \
+    cp -r /tmp/_ember_ui_app/*   "$REAL_PATH/app/" && \
+    rm -rf /tmp/_ember_ui_addon /tmp/_ember_ui_app
+
 # Copy the full console source
 COPY console/ .
 
