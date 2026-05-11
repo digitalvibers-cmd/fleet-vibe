@@ -1,0 +1,52 @@
+name: Customer Portal Prod Deploy (Hetzner)
+
+# Deploys the customer-portal to prod when files in customer-portal/ change on main.
+#
+# Target domain: https://flybox.rs
+#
+# Mechanism: SSH into the prod server and invoke the portal-specific deploy
+# script with the prod argument, which uses docker-compose.prod.yml.
+#
+# Required repo secret (environment: production):
+#   HETZNER_PROD_SSH_KEY - ed25519 private key for deploy@46.225.99.48
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "customer-portal/**"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-portal-prod-hetzner
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Portal to Hetzner Production
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 46.225.99.48
+          username: deploy
+          key: ${{ secrets.HETZNER_PROD_SSH_KEY }}
+          port: 22
+          command_timeout: 15m
+          script_stop: true
+          script: |
+            sudo -n /usr/local/bin/fleetvibe-deploy-portal prod
+
+  verify:
+    name: Smoke test portal
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check portal responds
+        run: |
+          curl -fsS --max-time 30 -o /dev/null https://flybox.rs/login \
+            || (echo "Portal not responding" && exit 1)

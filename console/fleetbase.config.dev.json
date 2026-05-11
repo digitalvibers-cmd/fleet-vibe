@@ -1,6 +1,6 @@
 {
-    "API_HOST": "https://api.flybox.rs",
-    "SOCKETCLUSTER_HOST": "api.flybox.rs",
+    "API_HOST": "https://apifleetvibe.digitalvibe.rs",
+    "SOCKETCLUSTER_HOST": "apifleetvibe.digitalvibe.rs",
     "SOCKETCLUSTER_PORT": "443",
     "SOCKETCLUSTER_SECURE": true,
     "SOCKETCLUSTER_PATH": "/socketcluster/"

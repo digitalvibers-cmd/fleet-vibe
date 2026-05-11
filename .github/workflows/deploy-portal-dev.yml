@@ -1,21 +1,20 @@
 name: Customer Portal Dev Deploy (Hetzner)
 
-# Deploys the customer-portal to the Hetzner dev server when files in
-# customer-portal/ change on the dev branch.
+# Deploys the customer-portal to dev when files in customer-portal/ change on dev.
 #
-# Mechanism: SSH into the server as `deploy` and run the portal-specific
-# deploy script that rebuilds and restarts the customer-portal container.
+# Target domain: https://portal-fleetvibe.digitalvibe.rs
+#
+# Mechanism: SSH into the dev server and invoke the portal-specific deploy
+# script, which uses docker-compose.dev.yml.
 #
 # Required repo secrets:
-#   HETZNER_DEPLOY_SSH_KEY        — ed25519 private key for deploy@46.225.99.48
-#   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY — Google Maps JS API key (baked into Next.js bundle at build time)
+#   HETZNER_DEPLOY_SSH_KEY - ed25519 private key for deploy@46.225.99.48
 
 on:
   push:
     branches: ["dev"]
     paths:
       - "customer-portal/**"
-      - "docker-compose.yml"
   workflow_dispatch:
 
 concurrency:
@@ -31,8 +30,6 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
-        env:
-          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
         with:
           host: 46.225.99.48
           username: deploy
@@ -40,7 +37,16 @@ jobs:
           port: 22
           command_timeout: 15m
           script_stop: true
-          envs: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
           script: |
-            printf 'NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=%s\n' "${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}" > "${HOME}/.portal-env"
-            sudo -n /usr/local/bin/fleetvibe-deploy-portal
+            sudo -n /usr/local/bin/fleetvibe-deploy-portal dev
+
+  verify:
+    name: Smoke test portal
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check portal responds
+        run: |
+          curl -fsS --max-time 30 -o /dev/null https://portal-fleetvibe.digitalvibe.rs/login \
+            || (echo "Portal not responding" && exit 1)

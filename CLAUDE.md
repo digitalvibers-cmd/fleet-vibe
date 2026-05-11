@@ -45,15 +45,15 @@ Console connects to the API via config in `console/fleetbase.config.json`:
 ### Docker (primary development method)
 
 ```bash
-./scripts/docker-install.sh          # Interactive first-time setup
-docker compose up -d                  # Start all services
-docker compose down                   # Stop all services
-docker compose exec application bash  # Shell into API container
-docker compose exec application php artisan migrate  # Run migrations
-docker compose exec application php artisan tinker   # Laravel REPL
+./scripts/local-setup.sh             # Interactive first-time setup (creates .env, builds, starts)
+make local                            # Start local stack
+make local-down                       # Stop local stack
+make local-shell                      # Shell into API container
+make migrate                          # Run migrations against the running stack
+docker compose exec application php artisan tinker  # Laravel REPL
 ```
 
-The install script generates `docker-compose.override.yml` with environment-specific settings (APP_KEY, host, HTTPS config).
+The local setup generates root `.env` from `.env.local.example` (with auto-generated `APP_KEY` and `COOKIE_SECRET`). Choose the env by Make target (`make local|dev|prod`) — each uses the matching `docker-compose.<env>.yml` overlay.
 
 ### Console (Ember.js)
 
@@ -151,31 +151,79 @@ Key project documents:
 
 ## Branching & Deployment Strategy
 
-| Branch | Environment | Domain | Notes |
-|--------|------------|--------|-------|
-| `dev` | **Development** | `fleetvibe.digitalvibe.rs` + `flybox.rs` | Active development, auto-deploy on push |
-| `main` | **Production** | *(prod stack idle — domeni preusmereni na dev)* | Stable releases only, auto-deploy on push |
+| Branch | Environment | Domains | Notes |
+|--------|------------|---------|-------|
+| (working copy) | **Local** | `localhost:4200` / `:8000` / `:3000` | `make local`, mail to log |
+| `dev` | **Dev (Hetzner)** | `fleetvibe.digitalvibe.rs`, `apifleetvibe.digitalvibe.rs`, `portal-fleetvibe.digitalvibe.rs` | Auto-deploy on push |
+| `main` | **Prod (Hetzner)** | `console.flybox.rs`, `api.flybox.rs`, `flybox.rs` | Auto-deploy on push; ff-only merge from `dev` |
 
 **Rules:**
 - All development work happens on `dev` or feature branches merged into `dev`.
-- `main` only receives merges from `dev` when a release is ready.
+- `main` only receives merges from `dev` when a release is ready (`git checkout main && git merge --ff-only dev && git push`).
 - CI/CD (GitHub Actions) deploys automatically:
-  - Push to `dev` → deploy to dev server
-  - Push to `main` → deploy to production server
-
-> **Napomena (2026-05-01):** Nginx portovi na serveru su preusmereni da `flybox.rs` domeni gadjaju dev stack (port 4200/8000/38000/3000) umesto prod stack-a. Prod stack (`/opt/fleetvibe-prod/`) i dalje radi na portovima 4201/8001/38001/3001, ali nije javno dostupan dok se ne restoruju Nginx konfiguracije.
+  - Push to `dev` → dev server (excluding `customer-portal/**`, which has its own workflow)
+  - Push to `main` → prod server (same path split for portal)
+- Every deploy workflow has a `verify` job that smoke-tests the API health endpoint, console runtime config, and portal login page. A failure marks the deploy red but does not auto-rollback.
 
 ## Environments
 
-### Development (aktivni javni domeni)
-- **Console**: `https://console.flybox.rs` → dev stack (port 4200)
-- **API**: `https://api.flybox.rs` → dev stack (port 8000)
-- **Portal**: `https://flybox.rs` → dev stack (port 3000)
-- Interno (direktno na dev serveru): `https://fleetvibe.digitalvibe.rs`
+### Local
+- **Console**: http://localhost:4200
+- **API**: http://localhost:8000
+- **Portal**: http://localhost:3000
+- **DB**: MySQL on host port 33060
+- Mail goes to `storage/logs/laravel.log` (`MAIL_MAILER=log`) — never reaches real customers.
+- Secrets in root `.env` (gitignored). Run `./scripts/local-setup.sh` to generate.
 
-### Production (idle — Nginx preusmereni na dev)
-- Prod stack živi na `/opt/fleetvibe-prod/`, portovi 4201/8001/3001
-- Da se vrati na prod: promeniti Nginx portove nazad na prod vrednosti i `nginx -s reload`
+### Dev (Hetzner, `/opt/fleetvibe`)
+- **Console**: https://fleetvibe.digitalvibe.rs (host port 4200)
+- **API**: https://apifleetvibe.digitalvibe.rs (host port 8000, WS 38000)
+- **Portal**: https://portal-fleetvibe.digitalvibe.rs (host port 3000)
+- **DB**: MySQL on host port 33060, host-mounted at `./docker/database/mysql`
+- Mail via Mailgun (prod credentials, same as prod env per project policy).
+- Secrets in `/opt/fleetvibe/.env` (owner `deploy`, mode 600).
+
+### Prod (Hetzner, `/opt/fleetvibe-prod`)
+- **Console**: https://console.flybox.rs (host port 4201)
+- **API**: https://api.flybox.rs (host port 8001, WS 38001)
+- **Portal**: https://flybox.rs and www.flybox.rs (host port 3001)
+- **DB**: MySQL on host port 33061, named volume `fleetvibe-prod-mysql`
+- Mail via Mailgun.
+- Secrets in `/opt/fleetvibe-prod/.env` (owner `deploy`, mode 600).
+
+Both dev and prod stacks coexist on the same Hetzner host (46.225.99.48) using different host port offsets. Nginx vhosts route each public domain to the correct port set.
+
+## Local Development Quick Start
+
+```bash
+git clone https://github.com/digitalvibers-cmd/fleet-vibe.git
+cd fleet-vibe
+./scripts/local-setup.sh   # creates .env, builds, starts the stack
+# stack is up at localhost:4200 / :8000 / :3000
+
+make local-logs    # tail logs
+make local-shell   # bash in application container
+make local-down    # stop
+```
+
+The setup script auto-generates `APP_KEY` and `COOKIE_SECRET`. `MAILGUN_SECRET` defaults to a placeholder — local mail is routed to `laravel.log` anyway. `GOOGLE_MAPS_API_KEY` defaults to the prod key per project policy.
+
+## Configuration Files & Overlays
+
+| File | Tracked | Purpose |
+|------|---------|---------|
+| `docker-compose.yml` | yes | Base service definitions, no env-specific values |
+| `docker-compose.local.yml` | yes | Local overlay (localhost, mail to log) |
+| `docker-compose.dev.yml` | yes | Dev server overlay |
+| `docker-compose.prod.yml` | yes | Prod server overlay |
+| `docker-compose.override.yml` | **no** (gitignored) | Legacy — do not recreate. If present on a server, the setup script removes it. |
+| `.env` | **no** (gitignored) | Per-environment secrets. Copy from `.env.{local,dev,prod}.example`. |
+| `console/fleetbase.config.{local,dev,prod}.json` | yes | Runtime config mounted by each overlay |
+| `console/fleetbase.config.json` | **no** (gitignored) | Legacy — overlays mount the env-specific file directly |
+| `customer-portal/.env.{development,production}` | yes | Next.js build-time fallback (overridden by docker build args) |
+| `customer-portal/.env.local` | **no** (gitignored) | Local-only override for `npm run dev` |
+
+The deploy scripts on each server (`/usr/local/bin/fleetvibe-deploy-{dev,prod,portal}`) always invoke `docker compose -f docker-compose.yml -f docker-compose.<env>.yml` explicitly, never relying on overlay auto-loading.
 
 ## Infrastructure
 
@@ -217,14 +265,14 @@ LogiVibe builds proprietary Fleetbase extensions to add functionality without mo
 
 ## Deployment Gotchas
 
-### PHP changes require manual container restart
-The CI/CD deploy script (`fleetvibe-deploy-dev`) only rebuilds and restarts the `console` container. Changes to `packages/fleetops/server/` or any other PHP code are NOT picked up automatically — Laravel Octane keeps classes in memory. After pushing PHP changes, always SSH to the server and run:
+### PHP changes
+`fleetvibe-deploy-dev` and `fleetvibe-deploy-prod` rebuild and restart the `application` container as part of every deploy (see `scripts/deploy-dev.sh` / `scripts/deploy-prod.sh`), so PHP changes in `packages/fleetops/server/` and the rest of the API are picked up automatically. If you make a manual edit on the server, restart manually:
 ```bash
-docker compose restart application queue
+docker compose -f docker-compose.yml -f docker-compose.<env>.yml restart application queue
 ```
 
 ### Customer Portal deploy
-The portal (`customer-portal/`) is deployed by a separate script (`/usr/local/bin/fleetvibe-deploy-portal`). It rebuilds the `customer-portal` Docker container from source. Build-time env vars (e.g. `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`) are written by CI into `/home/deploy/.portal-env` — this file must be owned by the `deploy` user, not root. If the portal CI action fails with "Permission denied" on `.portal-env`, run `chown deploy:deploy /home/deploy/.portal-env` on the server.
+The portal has its own workflows (`deploy-portal-dev.yml` / `deploy-portal-prod.yml`), triggered when files in `customer-portal/**` change. Both invoke the shared `/usr/local/bin/fleetvibe-deploy-portal` script with `dev` or `prod` as argument — that script picks the right overlay. Build-time `NEXT_PUBLIC_*` vars come from the `docker-compose.<env>.yml` overlay's `build.args`, sourced from `${VAR}` interpolation against the server's `.env` file.
 
 ### Internal API route prefix
 Fleetbase internal routes use the `/int/v1/` prefix. The `fleetbaseRoutes('orders', ...)` macro inside the `v1` group registers at `/int/v1/orders/`, **not** `/int/v1/fleet-ops/orders/`. The customer portal's `fleetbaseApi("orders", ...)` correctly maps to `/int/v1/orders`. Do not add `fleet-ops/` prefix when calling internal order routes from the portal.
@@ -265,7 +313,17 @@ Both dev (`/opt/fleetvibe`) and prod (`/opt/fleetvibe-prod`) run on the same Het
 | database | 33060 | 33061 |
 | customer-portal | 3000 | 3001 |
 
-Prod stack is managed with: `docker compose -f docker-compose.yml -f docker-compose.prod.yml <command>`
+Each stack is managed via its overlay:
+```bash
+# On dev server
+docker compose -f docker-compose.yml -f docker-compose.dev.yml <command>
+# or simply: make dev / make dev-down / make dev-logs
+
+# On prod server
+docker compose -f docker-compose.yml -f docker-compose.prod.yml <command>
+# or simply: make prod / make prod-down / make prod-logs
+```
+Never run `docker compose <command>` without `-f` flags on a server — there is no auto-loaded `docker-compose.override.yml` anymore.
 
 ### MySQL databases for prod
 

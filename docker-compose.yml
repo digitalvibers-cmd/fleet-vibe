@@ -1,3 +1,21 @@
+# Base service definitions for Fleetbase / LogiVibe.
+#
+# This file declares the services and their stable defaults. Environment-
+# specific values (URLs, secrets, ports, mail config, volume mounts that
+# differ per environment) live in overlay files:
+#
+#   docker-compose.local.yml  - local development (localhost)
+#   docker-compose.dev.yml    - dev server (fleetvibe.digitalvibe.rs)
+#   docker-compose.prod.yml   - prod server (flybox.rs)
+#
+# Run with the Makefile (recommended):
+#   make local    # docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+#   make dev      # on dev server
+#   make prod     # on prod server
+#
+# Secrets are injected via the auto-loaded `.env` file in this directory
+# (gitignored). Copy .env.local.example to .env for first-time setup.
+
 services:
   cache:
     image: redis:4-alpine
@@ -13,10 +31,6 @@ services:
     restart: unless-stopped
     volumes:
       - "./docker/database/:/docker-entrypoint-initdb.d/"
-      - "./docker/database/mysql:/var/lib/mysql"
-    environment:
-      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
-      MYSQL_DATABASE: "fleetbase"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -30,16 +44,12 @@ services:
     environment:
       SOCKETCLUSTER_WORKERS: 10
       SOCKETCLUSTER_BROKERS: 10
-      # SOCKETCLUSTER_OPTIONS can be set via docker-compose.override.yml for specific environments
-      # For production, use: SOCKETCLUSTER_OPTIONS: '{"origins":"https://yourdomain.com:*"}'
-      # For development, use: SOCKETCLUSTER_OPTIONS: '{"origins":"http://localhost:*"}'
 
   scheduler:
     image: fleetbase/fleetbase-api:latest
     command: ["go-crond", "--verbose", "root:./crontab"]
     restart: unless-stopped
     environment:
-      DATABASE_URL: "mysql://root@database/fleetbase"
       QUEUE_CONNECTION: redis
       CACHE_DRIVER: redis
       CACHE_PATH: /fleetbase/api/storage/framework/cache
@@ -59,45 +69,36 @@ services:
       timeout: 10s
       retries: 3
     environment:
-      DATABASE_URL: "mysql://root@database/fleetbase"
       QUEUE_CONNECTION: redis
       CACHE_DRIVER: redis
       CACHE_PATH: /fleetbase/api/storage/framework/cache
       CACHE_URL: tcp://cache
       REDIS_URL: tcp://cache
     depends_on:
-        - database
-        - cache
+      - database
+      - cache
 
   console:
     build:
-      context: ./console
-      args:
-        ENVIRONMENT: development
-    volumes:
-      - ./console/fleetbase.config.json:/usr/share/nginx/html/fleetbase.config.json
+      context: .
+      dockerfile: console/Dockerfile.dev
 
   application:
     image: fleetbase/fleetbase-api:latest
     volumes:
       - storage-uploads:/fleetbase/api/storage/app/public
     environment:
-      ENVIRONMENT: development
-      DATABASE_URL: "mysql://root@database/fleetbase"
       QUEUE_CONNECTION: redis
       CACHE_DRIVER: redis
       CACHE_PATH: /fleetbase/api/storage/framework/cache
       CACHE_URL: tcp://cache
       REDIS_URL: tcp://cache
-      SESSION_DOMAIN: localhost
       BROADCAST_DRIVER: socketcluster
-      MAIL_FROM_NAME: Fleetbase
       APP_NAME: Fleetbase
       LOG_CHANNEL: daily
       REGISTRY_HOST: https://registry.fleetbase.io
       REGISTRY_PREINSTALLED_EXTENSIONS: 'true'
       OSRM_HOST: https://router.project-osrm.org
-      API_CACHE_ENABLED: 'false'
     depends_on:
       - database
       - cache
@@ -106,13 +107,6 @@ services:
   customer-portal:
     build:
       context: ./customer-portal
-      args:
-        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
-        NEXT_PUBLIC_PORTAL_URL: ${NEXT_PUBLIC_PORTAL_URL:-http://localhost:3000}
-    environment:
-      FLEETBASE_API_URL: "http://httpd:80"
-      NEXT_PUBLIC_PORTAL_URL: "http://localhost:3000"
-      COOKIE_SECRET: "change-me-to-random-secret"
     depends_on:
       - httpd
 
