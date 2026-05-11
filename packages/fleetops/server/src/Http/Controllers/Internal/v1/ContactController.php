@@ -102,4 +102,33 @@ class ContactController extends FleetOpsController
 
         return response()->json(['status' => 'ok', 'message' => 'Import completed']);
     }
+
+    /**
+     * LogiVibe: override vendor bulkDelete to delete each contact individually
+     * so model events (and the LogiVibe CustomerContactObserver::deleted token
+     * revocation) fire. The vendor implementation uses
+     * `Model::whereIn(...)->delete()`, which bypasses Eloquent observers.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        if (!is_array($ids) || empty($ids)) {
+            return response()->error('No contacts to delete.');
+        }
+
+        $deleted = 0;
+        Contact::whereIn('uuid', $ids)->get()->each(function (Contact $contact) use (&$deleted) {
+            if ($contact->delete()) {
+                $deleted++;
+            }
+        });
+
+        return response()->json([
+            'status'  => 'ok',
+            'message' => 'Deleted (' . $deleted . ') contacts',
+            'count'   => $deleted,
+        ]);
+    }
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthToken } from "@/lib/auth";
-import { fleetbaseApi, fleetbaseSession } from "@/lib/api-client";
+import { requireValidSession } from "@/lib/auth";
+import { fleetbaseApi } from "@/lib/api-client";
 import { resolveCustomerContact } from "@/lib/customer";
 import { getDefaultOrderConfigUuid } from "@/lib/order-config";
 import type { ParsedOrder } from "@/lib/excel-import";
@@ -25,15 +25,11 @@ interface ImportResult {
 }
 
 export async function POST(request: NextRequest) {
-    const token = await getAuthToken();
-    if (!token) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const session = await fleetbaseSession(token);
-    if (!session.ok) {
+    const session = await requireValidSession();
+    if (!session) {
         return NextResponse.json({ error: "Session expired" }, { status: 401 });
     }
+    const { token } = session;
 
     const body = await request.json() as { orders: ParsedOrder[] };
     const orders = body.orders?.filter((o) => o.isValid) ?? [];
@@ -43,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     const [contact, orderConfigUuid] = await Promise.all([
-        resolveCustomerContact(token, session.data.user),
+        resolveCustomerContact(token, session.user),
         getDefaultOrderConfigUuid(token),
     ]);
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthToken } from "@/lib/auth";
-import { fleetbaseApi, fleetbaseSession } from "@/lib/api-client";
+import { requireValidSession } from "@/lib/auth";
+import { fleetbaseApi } from "@/lib/api-client";
 import { resolveCustomerContact } from "@/lib/customer";
 import { getDefaultOrderConfigUuid } from "@/lib/order-config";
 
@@ -21,16 +21,11 @@ function ensurePlaceLocation(place: Record<string, unknown> | undefined) {
 }
 
 export async function GET(request: NextRequest) {
-  const token = await getAuthToken();
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // Resolve customer Contact to isolate orders
-  const session = await fleetbaseSession(token);
-  if (!session.ok) {
+  const session = await requireValidSession();
+  if (!session) {
     return NextResponse.json({ error: "Session expired" }, { status: 401 });
   }
+  const { token } = session;
 
   const { searchParams } = request.nextUrl;
   const params: Record<string, string> = {};
@@ -53,20 +48,15 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const token = await getAuthToken();
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireValidSession();
+  if (!session) {
+    return NextResponse.json({ error: "Session expired" }, { status: 401 });
   }
+  const { token } = session;
 
   const body = await request.json();
 
-  // Resolve customer Contact from the authenticated user
-  const session = await fleetbaseSession(token);
-  if (!session.ok) {
-    return NextResponse.json({ error: "Session expired" }, { status: 401 });
-  }
-
-  const contact = await resolveCustomerContact(token, session.data.user);
+  const contact = await resolveCustomerContact(token, session.user);
 
   // Resolve default order config
   const orderConfigUuid = await getDefaultOrderConfigUuid(token);
