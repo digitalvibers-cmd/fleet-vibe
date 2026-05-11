@@ -1,6 +1,7 @@
 {
-  "API_HOST": "http://localhost:8000",
-  "SOCKETCLUSTER_HOST": "localhost",
-  "SOCKETCLUSTER_PORT": "38000",
-  "SOCKETCLUSTER_SECURE": "false"
+    "API_HOST": "https://api.flybox.rs",
+    "SOCKETCLUSTER_HOST": "api.flybox.rs",
+    "SOCKETCLUSTER_PORT": "443",
+    "SOCKETCLUSTER_SECURE": true,
+    "SOCKETCLUSTER_PATH": "/socketcluster/"
 }
