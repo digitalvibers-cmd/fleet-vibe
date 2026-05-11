@@ -2,9 +2,9 @@
 
 namespace Fleetbase\FleetOps\Http\Controllers\Internal\v1;
 
-use App\Services\CustomerAccessRevoker;
 use Fleetbase\FleetOps\Mail\CustomerCredentialsMail;
 use Fleetbase\FleetOps\Models\Contact;
+use Fleetbase\FleetOps\Support\CustomerAccessRevoker;
 use Fleetbase\Http\Controllers\Controller;
 use Fleetbase\Models\User;
 use Illuminate\Http\Request;

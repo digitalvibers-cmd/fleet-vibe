@@ -1,20 +1,21 @@
 <?php
 
-namespace App\Observers;
+namespace Fleetbase\FleetOps\Observers;
 
-use App\Services\CustomerAccessRevoker;
 use Fleetbase\FleetOps\Models\Contact;
+use Fleetbase\FleetOps\Support\CustomerAccessRevoker;
 use Fleetbase\Models\User;
 
 /**
  * LogiVibe: revoke customer-portal sessions when a customer User is
- * deactivated. Hooks the vendor `Fleetbase\Models\User` model from app-level
- * so the vendor package stays untouched.
+ * deactivated. Hooks the vendor `Fleetbase\Models\User` model as a second
+ * observer (registered in FleetOpsServiceProvider::boot after the existing
+ * UserObserver, since Laravel stacks observers).
  *
  * Why on `updated`: status flips can come from the admin UI through the
- * vendor User controller, which we don't override. The observer fires for
- * any User save — we only act when (a) status changed and is no longer
- * 'active' AND (b) the user is linked to a customer Contact.
+ * vendor User controller. The observer fires for any User save — we only
+ * act when (a) status changed and is no longer 'active' AND (b) the user
+ * is linked to a customer Contact.
  */
 class CustomerUserObserver
 {

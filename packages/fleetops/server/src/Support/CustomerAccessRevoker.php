@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace Fleetbase\FleetOps\Support;
 
 use Fleetbase\Models\CompanyUser;
 use Fleetbase\Models\User;
@@ -15,6 +15,10 @@ use Illuminate\Support\Facades\Log;
  *
  * Tokens are deleted directly from `personal_access_tokens` so the lookup
  * still works after the User row is gone (hard-delete path).
+ *
+ * Lives in the fleetops package because only `packages/fleetops/server` is
+ * bind-mounted into the application container — code under `api/app/` is
+ * baked into the upstream fleetbase-api image and not picked up on deploy.
  */
 class CustomerAccessRevoker
 {
