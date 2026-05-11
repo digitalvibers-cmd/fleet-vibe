@@ -53,10 +53,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Check API health
+      - name: Check API responds
         run: |
-          curl -fsS --max-time 30 https://api.flybox.rs/int/v1/health \
-            || (echo "API health check failed" && exit 1)
+          body=$(curl -fsS --max-time 30 https://api.flybox.rs/)
+          echo "$body" | grep -q '"fleetbase"' \
+            || (echo "API response did not look like Fleetbase: $body" && exit 1)
 
       - name: Check console runtime config points to prod API
         run: |

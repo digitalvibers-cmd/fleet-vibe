@@ -37,6 +37,7 @@ services:
     build:
       args:
         ENVIRONMENT: production
+        FLEETBASE_ENV: prod
     ports:
       - "4201:4200"
     volumes:
