@@ -30,8 +30,12 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
 .env*
+# But track per-env templates (loaded by Next.js at build time, hold no secrets)
+!.env.example
+!.env.development
+!.env.production
 
 # vercel
 .vercel

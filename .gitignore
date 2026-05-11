@@ -1,9 +1,14 @@
 /node_modules
 .env
+.env.local
+.env.dev
+.env.prod
 .env.backup
 .phpunit.result.cache
 .pnpm-store
 .tool-versions
+# Legacy auto-load overlay - replaced by docker-compose.local.yml + Makefile.
+# Keep in .gitignore so a stray local override.yml doesn't get committed.
 docker-compose.override.yml
 npm-debug.log
 yarn-error.log

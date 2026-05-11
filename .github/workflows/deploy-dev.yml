@@ -1,20 +1,26 @@
 name: Fleet Vibe Dev Deploy (Hetzner)
 
-# Deploys the dev branch to the Hetzner dev server (fleetvibe.digitalvibe.rs).
+# Deploys the dev branch to the Hetzner dev server.
+#
+# Domains:
+#   Console: https://fleetvibe.digitalvibe.rs
+#   API:     https://apifleetvibe.digitalvibe.rs
+#   Portal:  https://portal-fleetvibe.digitalvibe.rs
 #
 # Mechanism: SSH into the server as the restricted `deploy` user and invoke
-# /usr/local/bin/fleetvibe-deploy-dev via sudo NOPASSWD. That script runs
-# git fetch + fast-forward merge + docker compose build --no-cache console +
-# docker compose up -d console inside /opt/fleetvibe.
+# /usr/local/bin/fleetvibe-deploy-dev via sudo NOPASSWD. That script runs:
+#   - git fetch + fast-forward merge of origin/dev
+#   - docker compose with explicit -f flags (base + dev overlay)
+#   - rebuild console, customer-portal, application; up -d the changed set
 #
 # Required repo secret:
-#   HETZNER_DEPLOY_SSH_KEY — ed25519 private key for deploy@46.225.99.48
-#   (public key is already in /home/deploy/.ssh/authorized_keys with
-#   no-pty,no-port-forwarding,no-X11-forwarding,no-agent-forwarding).
+#   HETZNER_DEPLOY_SSH_KEY - ed25519 private key for deploy@46.225.99.48
 
 on:
   push:
     branches: [ "dev" ]
+    paths-ignore:
+      - "customer-portal/**"   # portal has its own workflow
   workflow_dispatch:
 
 concurrency:
@@ -40,14 +46,26 @@ jobs:
           script: |
             sudo -n /usr/local/bin/fleetvibe-deploy-dev
 
-      - name: Rebuild and restart API containers
-        continue-on-error: true
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: 46.225.99.48
-          username: deploy
-          key: ${{ secrets.HETZNER_DEPLOY_SSH_KEY }}
-          port: 22
-          command_timeout: 10m
-          script: |
-            cd /opt/fleetvibe && docker compose build --no-cache application && docker compose up -d application queue
+  verify:
+    name: Smoke test dev endpoints
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check API health
+        run: |
+          curl -fsS --max-time 30 https://apifleetvibe.digitalvibe.rs/int/v1/health \
+            || (echo "API health check failed" && exit 1)
+
+      - name: Check console runtime config points to dev API
+        run: |
+          API_HOST=$(curl -fsS --max-time 30 https://fleetvibe.digitalvibe.rs/fleetbase.config.json | jq -r .API_HOST)
+          if [ "$API_HOST" != "https://apifleetvibe.digitalvibe.rs" ]; then
+            echo "Console config has wrong API_HOST: $API_HOST"
+            exit 1
+          fi
+
+      - name: Check portal is responding
+        run: |
+          curl -fsS --max-time 30 -o /dev/null https://portal-fleetvibe.digitalvibe.rs/login \
+            || (echo "Portal not responding" && exit 1)

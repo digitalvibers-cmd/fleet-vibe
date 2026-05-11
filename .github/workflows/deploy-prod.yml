@@ -1,19 +1,27 @@
 name: Fleet Vibe Prod Deploy (Hetzner)
 
-# Deploys the main branch to production at flybox.rs / console.flybox.rs / api.flybox.rs.
+# Deploys the main branch to production.
+#
+# Domains:
+#   Console: https://console.flybox.rs
+#   API:     https://api.flybox.rs
+#   Portal:  https://flybox.rs
 #
 # Mechanism: SSH into 46.225.99.48 as the `deploy` user and invoke
-# /usr/local/bin/fleetvibe-deploy-prod via sudo NOPASSWD. That script runs
-# git fetch + fast-forward merge + docker compose (prod overlay) rebuild of
-# console and customer-portal, then brings them back up.
+# /usr/local/bin/fleetvibe-deploy-prod via sudo NOPASSWD. That script runs:
+#   - git fetch + fast-forward merge of origin/main
+#   - docker compose -f docker-compose.yml -f docker-compose.prod.yml ...
+#   - rebuild console, customer-portal, application; up -d the changed set
 #
 # Required repo secret (environment: production):
-#   HETZNER_PROD_SSH_KEY — ed25519 private key for deploy@46.225.99.48
-#   (same key as HETZNER_DEPLOY_SSH_KEY used for dev)
+#   HETZNER_PROD_SSH_KEY - ed25519 private key for deploy@46.225.99.48
+#   (same key as HETZNER_DEPLOY_SSH_KEY used for dev; aliased for clarity)
 
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - "customer-portal/**"   # portal has its own workflow
   workflow_dispatch:
 
 concurrency:
@@ -27,28 +35,38 @@ jobs:
     environment: production
     timeout-minutes: 20
     steps:
-      - name: Deploy console and portal via SSH
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: 46.225.99.48
           username: deploy
-          key: ${{ secrets.HETZNER_DEPLOY_SSH_KEY }}
+          key: ${{ secrets.HETZNER_PROD_SSH_KEY }}
           port: 22
           command_timeout: 15m
           script_stop: true
           script: |
             sudo -n /usr/local/bin/fleetvibe-deploy-prod
 
-      - name: Rebuild and restart API containers
-        continue-on-error: true
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: 46.225.99.48
-          username: deploy
-          key: ${{ secrets.HETZNER_DEPLOY_SSH_KEY }}
-          port: 22
-          command_timeout: 10m
-          script: |
-            cd /opt/fleetvibe-prod && \
-              docker compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache application && \
-              docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-deps application queue
+  verify:
+    name: Smoke test prod endpoints
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check API health
+        run: |
+          curl -fsS --max-time 30 https://api.flybox.rs/int/v1/health \
+            || (echo "API health check failed" && exit 1)
+
+      - name: Check console runtime config points to prod API
+        run: |
+          API_HOST=$(curl -fsS --max-time 30 https://console.flybox.rs/fleetbase.config.json | jq -r .API_HOST)
+          if [ "$API_HOST" != "https://api.flybox.rs" ]; then
+            echo "Console config has wrong API_HOST: $API_HOST"
+            exit 1
+          fi
+
+      - name: Check portal is responding
+        run: |
+          curl -fsS --max-time 30 -o /dev/null https://flybox.rs/login \
+            || (echo "Portal not responding" && exit 1)

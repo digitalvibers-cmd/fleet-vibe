@@ -11,6 +11,9 @@
 /environments/.env*
 /.pnp*
 /.eslintcache
+
+# Runtime config — mounted by docker-compose overlay (one of fleetbase.config.{local,dev,prod}.json)
+/fleetbase.config.json
 /coverage/
 /npm-debug.log*
 /testem.log
