@@ -77,6 +77,20 @@ class OrderController extends FleetOpsController
         if ($customFieldValues) {
             $order->syncCustomFieldValues($customFieldValues);
         }
+
+        $serviceQuoteUuid = $request->input('order.service_quote_uuid');
+        if ($serviceQuoteUuid) {
+            $order->loadMissing('purchaseRate');
+            $currentServiceQuoteUuid = $order->purchaseRate?->service_quote_uuid;
+            if ($serviceQuoteUuid !== $currentServiceQuoteUuid) {
+                $serviceQuote = ServiceQuote::where('uuid', $serviceQuoteUuid)
+                    ->where('company_uuid', session('company'))
+                    ->first();
+                if ($serviceQuote instanceof ServiceQuote) {
+                    $order->purchaseServiceQuote($serviceQuote);
+                }
+            }
+        }
     }
 
     /**
