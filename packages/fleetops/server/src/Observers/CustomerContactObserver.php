@@ -2,6 +2,7 @@
 
 namespace Fleetbase\FleetOps\Observers;
 
+use App\Services\CustomerAccessRevoker;
 use Fleetbase\FleetOps\Mail\CustomerCredentialsMail;
 use Fleetbase\FleetOps\Models\Contact;
 use Fleetbase\Models\CompanyUser;
@@ -47,6 +48,31 @@ class CustomerContactObserver
             Mail::to($contact->email)->send(new CustomerCredentialsMail($password, $contact));
         } catch (\Throwable $e) {
             Log::error('CustomerContactObserver failed to send welcome email', [
+                'contact' => $contact->uuid ?? null,
+                'error'   => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * LogiVibe: purge all Sanctum tokens for the linked user BEFORE the vendor
+     * ContactObserver::deleted hard-deletes the user. Uses the user_uuid
+     * directly so it works regardless of observer execution order.
+     */
+    public function deleted(Contact $contact): void
+    {
+        if ($contact->type !== 'customer') {
+            return;
+        }
+
+        if (empty($contact->user_uuid)) {
+            return;
+        }
+
+        try {
+            app(CustomerAccessRevoker::class)->purgeTokensByUuid($contact->user_uuid);
+        } catch (\Throwable $e) {
+            Log::error('CustomerContactObserver failed to revoke customer access', [
                 'contact' => $contact->uuid ?? null,
                 'error'   => $e->getMessage(),
             ]);

@@ -1,20 +1,14 @@
 import { NextResponse } from "next/server";
-import { getAuthToken } from "@/lib/auth";
-import { fleetbaseSession } from "@/lib/api-client";
+import { requireValidSession } from "@/lib/auth";
 import { resolveCustomerContact } from "@/lib/customer";
 
 export async function GET() {
-  const token = await getAuthToken();
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const session = await fleetbaseSession(token);
-  if (!session.ok) {
+  const session = await requireValidSession();
+  if (!session) {
     return NextResponse.json({ error: "Session expired" }, { status: 401 });
   }
 
-  const contact = await resolveCustomerContact(token, session.data.user);
+  const contact = await resolveCustomerContact(session.token, session.user);
   if (!contact) {
     return NextResponse.json(
       { error: "Customer profile not found" },

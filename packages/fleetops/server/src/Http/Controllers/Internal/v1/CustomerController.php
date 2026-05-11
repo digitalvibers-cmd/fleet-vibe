@@ -2,6 +2,7 @@
 
 namespace Fleetbase\FleetOps\Http\Controllers\Internal\v1;
 
+use App\Services\CustomerAccessRevoker;
 use Fleetbase\FleetOps\Mail\CustomerCredentialsMail;
 use Fleetbase\FleetOps\Models\Contact;
 use Fleetbase\Http\Controllers\Controller;
@@ -85,6 +86,10 @@ class CustomerController extends Controller
 
         // Change password
         $user->changePassword($password);
+
+        // LogiVibe: revoke all existing Sanctum tokens so prior portal sessions
+        // are invalidated; the customer must log in again with the new password.
+        app(CustomerAccessRevoker::class)->revokeTokens($user);
 
         // Send credentials to customer if opted
         if ($sendCredentials) {
