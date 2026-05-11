@@ -84,6 +84,14 @@ class FleetOpsServiceProvider extends CoreServiceProvider
     {
         $this->app->register(CoreServiceProvider::class);
         $this->app->register(ReportSchemaServiceProvider::class);
+
+        // LogiVibe: override core UserController so that PUT /int/v1/users/{id}
+        // validates via UpdateUserRequest (with Rule::unique->ignore($id)) instead
+        // of CreateUserRequest, which rejects self-email/phone as duplicates.
+        $this->app->bind(
+            \Fleetbase\Http\Controllers\Internal\v1\UserController::class,
+            \Fleetbase\FleetOps\Http\Controllers\Internal\v1\UserController::class,
+        );
     }
 
     /**
