@@ -42,6 +42,7 @@ services:
     build:
       args:
         ENVIRONMENT: development
+        FLEETBASE_ENV: dev
     ports:
       - "4200:4200"
     volumes:

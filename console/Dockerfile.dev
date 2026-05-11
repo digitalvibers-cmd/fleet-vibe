@@ -51,6 +51,11 @@ RUN REAL_PATH=$(readlink -f node_modules/@fleetbase/ember-ui) && \
 # Copy the full console source
 COPY console/ .
 
+# Pick the env-specific fleetbase.config.json so Ember's build pipeline finds it.
+# At runtime the compose overlay mounts the same file, so this is mostly a placeholder.
+ARG FLEETBASE_ENV=local
+RUN cp "fleetbase.config.${FLEETBASE_ENV}.json" fleetbase.config.json
+
 # Build the application
 RUN pnpm build --environment $ENVIRONMENT
 
