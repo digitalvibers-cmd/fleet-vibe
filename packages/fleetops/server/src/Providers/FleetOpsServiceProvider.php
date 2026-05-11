@@ -65,6 +65,8 @@ class FleetOpsServiceProvider extends CoreServiceProvider
         \Fleetbase\FleetOps\Console\Commands\SendDriverNotification::class,
         \Fleetbase\FleetOps\Console\Commands\ReplayVehicleLocations::class,
         \Fleetbase\FleetOps\Console\Commands\TestEmail::class,
+        // LogiVibe: one-shot cleanup of orphan Sanctum tokens for deleted customers
+        \Fleetbase\FleetOps\Console\Commands\PurgeOrphanCustomerTokens::class,
     ];
 
     /**
@@ -106,6 +108,10 @@ class FleetOpsServiceProvider extends CoreServiceProvider
         $this->registerObservers();
         // LogiVibe: register extra observer to auto-send welcome email to new customers
         \Fleetbase\FleetOps\Models\Contact::observe(\Fleetbase\FleetOps\Observers\CustomerContactObserver::class);
+
+        // LogiVibe: stack a second observer on vendor User so customer-portal
+        // sessions are killed when a customer user is deactivated or deleted.
+        \Fleetbase\Models\User::observe(\Fleetbase\FleetOps\Observers\CustomerUserObserver::class);
 
         // LogiVibe: customer-type users receive portal credentials via
         // CustomerCredentialsMail. Suppress the default Fleetbase UserInvited

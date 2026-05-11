@@ -2,9 +2,9 @@
 
 namespace Fleetbase\FleetOps\Observers;
 
-use App\Services\CustomerAccessRevoker;
 use Fleetbase\FleetOps\Mail\CustomerCredentialsMail;
 use Fleetbase\FleetOps\Models\Contact;
+use Fleetbase\FleetOps\Support\CustomerAccessRevoker;
 use Fleetbase\Models\CompanyUser;
 use Fleetbase\Models\User;
 use Illuminate\Support\Facades\Log;

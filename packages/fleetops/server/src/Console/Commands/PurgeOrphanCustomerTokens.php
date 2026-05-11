@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace Fleetbase\FleetOps\Console\Commands;
 
 use Fleetbase\Models\User;
 use Illuminate\Console\Command;
