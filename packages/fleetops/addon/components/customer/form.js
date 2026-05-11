@@ -52,6 +52,9 @@ export default class CustomerFormComponent extends Component {
                             this.notifications.success('New user created successfully!');
                             modal.done();
                         } catch (error) {
+                            if (!user.isNew) {
+                                user.rollbackAttributes();
+                            }
                             this.notifications.serverError(error);
                             modal.stopLoading();
                         }
