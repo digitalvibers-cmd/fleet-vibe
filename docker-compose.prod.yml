@@ -55,7 +55,12 @@ services:
       SESSION_DOMAIN: ".flybox.rs"
       ENVIRONMENT: "production"
       APP_DEBUG: "false"
-      API_CACHE_ENABLED: "true"
+      # Disabled: HasApiModelCache trait caches Order list results without
+      # including session('user') in the cache key. With per-user directives
+      # like CustomerOrders, the cached collection leaks across customers
+      # (customer A's orders shown to customer B and vice versa).
+      # Re-enable only after the upstream cache key composition is patched.
+      API_CACHE_ENABLED: "false"
       DATABASE_URL: "mysql://root:${DB_PASSWORD}@database/fleetbase"
       GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY}"
       <<: *mail-env
