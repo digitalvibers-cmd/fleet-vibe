@@ -266,13 +266,20 @@ LogiVibe builds proprietary Fleetbase extensions to add functionality without mo
 ## Deployment Gotchas
 
 ### Permissions seed on fresh environments
-After spinning up a fresh stack (new MySQL volume), the Fleetbase ACL tables (`permissions`, `policies`, `model_has_*`) are EMPTY. The migrations only create the tables. Without the seed, customer-type users get a 401 `User is not authorized to list order` from `/int/v1/orders` even though login succeeds — bug surfaces as "login refreshes page" in the customer portal. After the first `docker compose ... up -d` + `php artisan migrate --force`, also run:
+After spinning up a fresh stack (new MySQL volume), the Fleetbase ACL tables (`permissions`, `policies`, `model_has_*`, `directives`) are EMPTY. The migrations only create the tables. Without the seed:
+- customer-type users get HTTP 401 `User is not authorized to list order` from `/int/v1/orders` even though login succeeds — bug surfaces as "login refreshes page" in the customer portal.
+- After running `fleetbase:create-permissions`, the 401 goes away BUT customers see ALL orders (no filter) until you also reset the Spatie permission cache AND reload Octane workers — they hold stale class state from before the seed.
+
+Full first-time sequence (also wired into `scripts/setup-{dev,prod}-server.sh`):
 ```bash
+docker compose ... exec application php artisan migrate --force
 docker compose ... exec application php artisan fleetbase:create-permissions
 docker compose ... exec application php artisan fleetbase:assign-admin-roles
 docker compose ... exec application php artisan fleetops:assign-customer-roles
+docker compose ... exec application php artisan permission:cache-reset
+docker compose ... restart application queue scheduler    # Octane reload
 ```
-This is wired into `scripts/setup-{dev,prod}-server.sh` instructions. The commands are idempotent — safe to re-run if a role/policy was deleted by mistake.
+All commands are idempotent — safe to re-run if a role/policy was deleted, but `restart` will cause ~5s of API downtime, so don't loop it in CI.
 
 ### PHP changes
 `fleetvibe-deploy-dev` and `fleetvibe-deploy-prod` rebuild and restart the `application` container as part of every deploy (see `scripts/deploy-dev.sh` / `scripts/deploy-prod.sh`), so PHP changes in `packages/fleetops/server/` and the rest of the API are picked up automatically. If you make a manual edit on the server, restart manually:
