@@ -82,9 +82,15 @@ cat <<EOF
        make prod
        # or: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
-  3. Run migrations (first time only):
+  3. Run migrations + seed ACL (first time only):
        docker compose -f docker-compose.yml -f docker-compose.prod.yml \\
          exec application php artisan migrate --force
+       docker compose -f docker-compose.yml -f docker-compose.prod.yml \\
+         exec application php artisan fleetbase:create-permissions
+       docker compose -f docker-compose.yml -f docker-compose.prod.yml \\
+         exec application php artisan fleetbase:assign-admin-roles
+       docker compose -f docker-compose.yml -f docker-compose.prod.yml \\
+         exec application php artisan fleetops:assign-customer-roles
 
   4. SSL (after DNS propagates):
        certbot --nginx \\
