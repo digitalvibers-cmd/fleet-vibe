@@ -99,6 +99,10 @@ cat <<EOF
          exec application php artisan fleetbase:assign-admin-roles
        docker compose -f docker-compose.yml -f docker-compose.dev.yml \\
          exec application php artisan fleetops:assign-customer-roles
+       docker compose -f docker-compose.yml -f docker-compose.dev.yml \\
+         exec application php artisan permission:cache-reset
+       docker compose -f docker-compose.yml -f docker-compose.dev.yml \\
+         restart application queue scheduler   # Octane worker reload
 
   4. SSL (after DNS propagates - fleetvibe.digitalvibe.rs may already have cert):
        certbot --nginx \\
