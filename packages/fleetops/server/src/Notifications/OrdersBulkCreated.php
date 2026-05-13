@@ -28,7 +28,7 @@ class OrdersBulkCreated extends Notification implements ShouldQueue
         $this->count   = $count;
         $customerName  = $order->customer_name ?? 'klijenta';
         $this->title   = "Flybox - Kreirano je {$count} novih dostava od {$customerName}";
-        $this->message = "Uvezeno je {$count} novih porudžbina. Otvori FleetVibe i dodeli vozače.";
+        $this->message = "Uvezeno je {$count} novih porudžbina. Otvori FlyBox i dodeli vozače.";
         $this->data    = ['count' => $count, 'type' => 'orders_bulk_created'];
     }
 
@@ -58,14 +58,14 @@ class OrdersBulkCreated extends Notification implements ShouldQueue
 
     public function toMail($notifiable): MailMessage
     {
-        $consoleHost  = rtrim(env('CONSOLE_HOST', 'https://fleetvibe.flyboxdelivery.rs'), '/');
+        $consoleHost  = rtrim(env('CONSOLE_HOST', 'https://console.flybox.rs'), '/');
         $dashboardUrl = $consoleHost . '/fleet-ops?layout=kanban';
 
         return (new MailMessage())
             ->subject($this->title)
             ->greeting('Zdravo!')
             ->line($this->message)
-            ->action('Otvori FleetVibe', $dashboardUrl)
-            ->salutation('FleetVibe tim');
+            ->action('Otvori FlyBox', $dashboardUrl)
+            ->salutation('FlyBox tim');
     }
 }

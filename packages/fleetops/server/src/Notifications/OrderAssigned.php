@@ -141,7 +141,7 @@ class OrderAssigned extends Notification implements ShouldQueue
         }
 
         $message->line('**Otvori aplikaciju Navigator**');
-        $message->salutation('FleetVibe tim');
+        $message->salutation('FlyBox tim');
 
         return $message;
     }

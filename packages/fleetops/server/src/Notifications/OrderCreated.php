@@ -29,7 +29,7 @@ class OrderCreated extends Notification implements ShouldQueue
         $this->order   = $order;
         $customerName  = $order->customer_name ?? 'klijenta';
         $this->title   = 'Flybox - Nova dostava je kreirana od klijenta ' . $customerName;
-        $this->message = 'Otvori FleetVibe i dodeli vozaca i cenu usluge.';
+        $this->message = 'Otvori FlyBox i dodeli vozaca i cenu usluge.';
         $this->data    = ['id' => $this->order->public_id, 'type' => 'order_created'];
     }
 
@@ -61,15 +61,15 @@ class OrderCreated extends Notification implements ShouldQueue
 
     public function toMail($notifiable)
     {
-        $consoleHost  = rtrim(env('CONSOLE_HOST', 'https://fleetvibe.flyboxdelivery.rs'), '/');
+        $consoleHost  = rtrim(env('CONSOLE_HOST', 'https://console.flybox.rs'), '/');
         $dashboardUrl = $consoleHost . '/fleet-ops?layout=kanban';
 
         return (new MailMessage())
             ->subject($this->title)
             ->greeting('Zdravo!')
             ->line($this->message)
-            ->action('Otvori FleetVibe', $dashboardUrl)
-            ->salutation('FleetVibe tim');
+            ->action('Otvori FlyBox', $dashboardUrl)
+            ->salutation('FlyBox tim');
     }
 
     public function toFcm($notifiable)

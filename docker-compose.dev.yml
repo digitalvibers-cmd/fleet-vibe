@@ -15,7 +15,7 @@ x-mail-env: &mail-env
   MAILGUN_SECRET: "${MAILGUN_SECRET}"
   MAILGUN_ENDPOINT: "api.eu.mailgun.net"
   MAIL_FROM_ADDRESS: "delivery@flyboxdelivery.rs"
-  MAIL_FROM_NAME: "LogiVibe (dev)"
+  MAIL_FROM_NAME: "FlyBox (dev)"
 
 services:
   database:
