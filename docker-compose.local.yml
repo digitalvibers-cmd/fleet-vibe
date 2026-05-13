@@ -14,7 +14,7 @@
 x-mail-env: &mail-env
   MAIL_MAILER: "log"
   MAIL_FROM_ADDRESS: "delivery@flyboxdelivery.rs"
-  MAIL_FROM_NAME: "LogiVibe (local)"
+  MAIL_FROM_NAME: "FlyBox (local)"
 
 services:
   database:

@@ -38,7 +38,7 @@ class OrdersBulkAssigned extends Notification implements ShouldQueue
             ->greeting('Zdravo!')
             ->line($this->message)
             ->line('**Otvorite aplikaciju Navigator**')
-            ->salutation('FleetVibe tim');
+            ->salutation('FlyBox tim');
     }
 
     public function toArray(): array
