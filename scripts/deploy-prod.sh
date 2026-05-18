@@ -20,10 +20,13 @@ git merge --ff-only origin/main
 echo "==> Updating submodules..."
 git submodule update --init --recursive
 
-echo "==> Rebuilding console and application..."
-docker compose -f docker-compose.yml -f "$OVERLAY" build --no-cache console application
+echo "==> Rebuilding console, application, httpd..."
+docker compose -f docker-compose.yml -f "$OVERLAY" build --no-cache console application httpd
 
 echo "==> Restarting changed services..."
-docker compose -f docker-compose.yml -f "$OVERLAY" up -d --no-deps console application queue scheduler
+# httpd is recreated alongside application so nginx picks up the new
+# application container IP. See "httpd (nginx) keširani upstream IP"
+# in CLAUDE.md for the underlying bug this prevents.
+docker compose -f docker-compose.yml -f "$OVERLAY" up -d --no-deps --force-recreate console application queue scheduler httpd
 
 echo "==> Prod stack deployed."

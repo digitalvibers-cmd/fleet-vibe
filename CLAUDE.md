@@ -320,13 +320,13 @@ cd /opt/fleetvibe        # ili /opt/fleetvibe-prod
 docker compose -f docker-compose.yml -f docker-compose.<env>.yml restart httpd
 ```
 
-**Trajno rešenje** (nije još urađeno): u `docker/httpd/default.conf` koristiti Docker embedded DNS resolver i varijabilni upstream da nginx re-rezolvuje hostname svakih N sekundi:
+**Trajno rešenje (implementirano)**: `docker/httpd/vhost.conf` koristi Docker embedded DNS resolver i variable upstream tako da nginx re-rezolvuje hostname pri svakom cache miss-u:
 ```nginx
-resolver 127.0.0.11 valid=30s ipv6=off;
-set $upstream http://application:8000;
-proxy_pass $upstream;
+resolver 127.0.0.11 valid=10s ipv6=off;
+set $upstream_app http://${NGINX_APPLICATION_HOSTNAME}:8000;
+proxy_pass $upstream_app;
 ```
-Bez toga, **uvek restartuj `httpd` kad god restartuješ `application`** — ili još jednostavnije, restartuj ih u tom redosledu: `restart application queue scheduler httpd`.
+Pored toga, `scripts/deploy-{dev,prod}.sh` sada rebuild-uju i `force-recreate`-uju `httpd` zajedno sa `application` u svakom deploy-u, tako da config promene i IP promene uvek ostaju u sinhronizaciji. Ako menjaš `vhost.conf`, samo push na dev/main — deploy skripta će automatski rebuild-ovati httpd image i restart-ovati ga.
 
 ### Customer Portal deploy
 The portal has its own workflows (`deploy-portal-dev.yml` / `deploy-portal-prod.yml`), triggered when files in `customer-portal/**` change. Both invoke the shared `/usr/local/bin/fleetvibe-deploy-portal` script with `dev` or `prod` as argument — that script picks the right overlay. Build-time `NEXT_PUBLIC_*` vars come from the `docker-compose.<env>.yml` overlay's `build.args`, sourced from `${VAR}` interpolation against the server's `.env` file.
