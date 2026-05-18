@@ -18,9 +18,11 @@ let _loadPromise = null;
  * Subsequent calls return the same promise (singleton).
  *
  * @param {string} [apiKey] - Optional API key override
+ * @param {string} [language] - Optional language override (default: 'sr')
+ * @param {string} [region]   - Optional region override (default: 'RS')
  * @returns {Promise<google.maps>}
  */
-export default function loadGoogleMaps(apiKey) {
+export default function loadGoogleMaps(apiKey, language = 'sr', region = 'RS') {
     if (_loadPromise) {
         return _loadPromise;
     }
@@ -49,7 +51,7 @@ export default function loadGoogleMaps(apiKey) {
 
         // Create and inject the script tag
         const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places&callback=${callbackName}`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places&language=${language}&region=${region}&callback=${callbackName}`;
         script.async = true;
         script.defer = true;
 

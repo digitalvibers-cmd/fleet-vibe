@@ -112,6 +112,17 @@ Most business logic lives in `packages/` submodules, not directly in `api/` or `
 - **New UI behavior**: a custom Ember extension (see "Custom Extensions" below), not a patch to `packages/ember-ui/` or `packages/fleetops/`.
 - **API overrides**: a custom Laravel package, not a patch to `packages/core-api/`.
 
+### LogiVibe core fleetops modifikacije (RS lokalizacija)
+
+Sledeći fajlovi u `packages/fleetops/` su izmenjeni za rad sa srpskim adresama na latinici (npr. "Dusana Pudje" sada radi isto kao ćirilični unos). Pri sledećem upstream sync-u, ove izmene moraju se re-aplicirati ručno (`git log -- packages/fleetops/` za diff):
+
+- `addon/utils/google-maps-loader.js` — `language` + `region` parametri (default `sr`/`RS`) na Google Maps SDK URL.
+- `addon/utils/serbian-translit.js` (novi) — latinica → ćirilica transliteracija.
+- `addon/components/place-autocomplete-input.js` — `componentRestrictions: { country: ['rs'] }`, RS bounds, cyrillic Geocoder fallback kada Autocomplete ne vrati rezultat.
+- `server/src/Support/Geocoding.php` — locale iz `GOOGLE_MAPS_LOCALE` env var (default `sr`) umesto hardkodovanog `'en'`.
+- `server/src/Models/Place.php` — `createFromGeocodingLookup` vraća `null` umesto Place sa `(0, 0)`; `getValuesFromGeocodingLookup` vraća `[]`; `createFromMixed` ne fallback-uje na `(0, 0)`; `createFromImportRow` preskaće red ako geocoding fail.
+- `server/config/geocoder.php` — default locale `'sr'` umesto `'us'`.
+
 ## Docker Console Build — pnpm Symlink Caveat
 
 `console/Dockerfile.dev` overlays local `packages/fleetops/` files on top of the npm-installed `@fleetbase/fleetops-engine`. Because pnpm uses a symlink store (`node_modules/@fleetbase/fleetops-engine` → `.pnpm/…/node_modules/@fleetbase/fleetops-engine`), files must be copied into the **resolved real path** (`readlink -f`), not the symlink path. A plain `COPY ... node_modules/@fleetbase/fleetops-engine/` creates a new directory alongside the symlink and the engine's actual package remains unchanged.

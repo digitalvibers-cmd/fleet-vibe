@@ -14,6 +14,8 @@ export default function loadGoogleMaps(): Promise<typeof google.maps> {
   }
 
   const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+  const language = process.env.NEXT_PUBLIC_GOOGLE_MAPS_LANGUAGE || "sr";
+  const region = process.env.NEXT_PUBLIC_GOOGLE_MAPS_REGION || "RS";
 
   loadPromise = new Promise((resolve, reject) => {
     const callbackName = `__googleMapsCallback_${Date.now()}`;
@@ -28,7 +30,7 @@ export default function loadGoogleMaps(): Promise<typeof google.maps> {
     };
 
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places&callback=${callbackName}`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places&language=${language}&region=${region}&callback=${callbackName}`;
     script.async = true;
     script.defer = true;
 
