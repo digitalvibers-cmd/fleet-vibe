@@ -298,6 +298,36 @@ All commands are idempotent — safe to re-run if a role/policy was deleted, but
 docker compose -f docker-compose.yml -f docker-compose.<env>.yml restart application queue
 ```
 
+### httpd (nginx) keširani upstream IP nakon application restart-a
+
+**Simptom**: API vraća `502 Bad Gateway` na svim endpoint-ima (`localhost:8000`, `apifleetvibe.digitalvibe.rs`, `api.flybox.rs`). Browser console pokazuje "Network request failed" + CORS error (jer 502 odgovori ne nose CORS headere). Login na console / portal-u izgleda da je pukao, ali API je zapravo prosto nedostupan kroz nginx.
+
+**Uzrok**: nginx u `httpd` kontejneru rezolvuje hostname `application` u Docker bridge IP **samo jednom pri pokretanju** i čuva tu vrednost zauvek. Kad se `application` kontejner restartuje (npr. tokom deploy-a, ručnim `restart application`, ili OOM-killom), dobija novi IP iz Docker DHCP pool-a. nginx i dalje šalje upstream na stari IP → "connection refused" → 502.
+
+**Detekcija**:
+```bash
+docker exec fleetvibe-httpd-1 tail -20 /var/log/nginx/error_log
+# Tražiš: "connect() failed (111: Connection refused) while connecting to upstream"
+#         "upstream: http://172.18.0.X:8000/..."
+# Zatim uporedi sa stvarnim IP-em:
+docker exec fleetvibe-httpd-1 getent hosts application
+# Ako se 172.18.0.X iz greške NE poklapa sa rezultatom getent — to je taj bug.
+```
+
+**Fix** (3s downtime na API-ju):
+```bash
+cd /opt/fleetvibe        # ili /opt/fleetvibe-prod
+docker compose -f docker-compose.yml -f docker-compose.<env>.yml restart httpd
+```
+
+**Trajno rešenje** (nije još urađeno): u `docker/httpd/default.conf` koristiti Docker embedded DNS resolver i varijabilni upstream da nginx re-rezolvuje hostname svakih N sekundi:
+```nginx
+resolver 127.0.0.11 valid=30s ipv6=off;
+set $upstream http://application:8000;
+proxy_pass $upstream;
+```
+Bez toga, **uvek restartuj `httpd` kad god restartuješ `application`** — ili još jednostavnije, restartuj ih u tom redosledu: `restart application queue scheduler httpd`.
+
 ### Customer Portal deploy
 The portal has its own workflows (`deploy-portal-dev.yml` / `deploy-portal-prod.yml`), triggered when files in `customer-portal/**` change. Both invoke the shared `/usr/local/bin/fleetvibe-deploy-portal` script with `dev` or `prod` as argument — that script picks the right overlay. Build-time `NEXT_PUBLIC_*` vars come from the `docker-compose.<env>.yml` overlay's `build.args`, sourced from `${VAR}` interpolation against the server's `.env` file.
 
