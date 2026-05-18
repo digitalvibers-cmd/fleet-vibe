@@ -386,12 +386,7 @@ class Place extends Model
         $results = \Geocoder\Laravel\Facades\Geocoder::geocode($address)->get();
 
         if ($results->isEmpty() || !$results->first()) {
-            $place = (new static())->newInstance(['street1' => $address, 'location' => new SpatialPoint(0, 0)]);
-            if ($saveInstance) {
-                $place->save();
-            }
-
-            return $place;
+            return null;
         }
 
         return static::createFromGoogleAddress($results->first(), $saveInstance);
@@ -407,7 +402,7 @@ class Place extends Model
         $results = \Geocoder\Laravel\Facades\Geocoder::geocode($address)->get();
 
         if ($results->isEmpty() || !$results->first()) {
-            return ['street1' => $address, 'location' => new SpatialPoint(0, 0)];
+            return [];
         }
 
         return static::getGoogleAddressArray($results->first());
@@ -578,24 +573,36 @@ class Place extends Model
                 return $existingPlace;
             }
 
+            // If a real GeoJSON location was already supplied (e.g. picked from
+            // Autocomplete in the portal/console), trust it and skip the geocoding
+            // lookup — that path is required when the geocoder is rate-limited or
+            // returns inconsistent results for partial typed input.
+            if (!empty($place['location'])) {
+                return static::create($place);
+            }
+
             // If has $attributes['address']
             $address = data_get($place, 'address');
             if ($address) {
-                return static::create(array_merge($place, static::getValuesFromGeocodingLookup($address)));
+                $values = static::getValuesFromGeocodingLookup($address);
+                if (empty($values)) {
+                    return null;
+                }
+                return static::create(array_merge($place, $values));
             }
 
             // Perform google lookup to fill street1
             $street1 = data_get($place, 'street1');
             if ($street1) {
-                return static::create(array_merge($place, static::getValuesFromGeocodingLookup($street1)));
+                $values = static::getValuesFromGeocodingLookup($street1);
+                if (empty($values)) {
+                    return null;
+                }
+                return static::create(array_merge($place, $values));
             }
 
-            // Otherwise, create a new Place owith the given attributes
-            if (empty($place['location'])) {
-                $place['location'] = new SpatialPoint(0, 0);
-            }
-
-            return static::create($place);
+            // No location, no address, no street1 — cannot create a meaningful Place.
+            return null;
         }
         // If $place is a GoogleAddress object
         elseif ($place instanceof \Geocoder\Provider\GoogleMaps\Model\GoogleAddress) {
@@ -792,6 +799,11 @@ class Place extends Model
         }
 
         $place = static::createFromGeocodingLookup($address, false);
+        if (!$place instanceof Place) {
+            // Geocoder did not return a usable address; skip this import row instead
+            // of creating a Place pinned to (0,0) which would later show up on the map.
+            return null;
+        }
         foreach ($addressFields as $field => $options) {
             if ($place->isFillable($field) && empty($place->{$field})) {
                 $value = Utils::or($row, array_merge([$field], $options['alias']));

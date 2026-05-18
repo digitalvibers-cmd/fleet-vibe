@@ -3,20 +3,75 @@ import { requireValidSession } from "@/lib/auth";
 import { fleetbaseApi } from "@/lib/api-client";
 import { resolveCustomerContact } from "@/lib/customer";
 import { getDefaultOrderConfigUuid } from "@/lib/order-config";
+import { latinToCyrillic, hasLatinChars } from "@/lib/serbian-translit";
 import type { ParsedOrder } from "@/lib/excel-import";
 import type { Order } from "@/lib/types";
 
-const BELGRADE_LOCATION = { type: "Point", coordinates: [20.4489, 44.7866] };
+interface GeocodedPlace {
+    name?: string;
+    street1?: string;
+    city?: string;
+    province?: string;
+    country?: string;
+    postal_code?: string;
+    neighborhood?: string;
+    building?: string;
+    location?: { type: "Point"; coordinates: [number, number] };
+}
 
-function buildPlace(name: string, address: string, city: string, postal: string) {
+function pickPlaceFields(raw: GeocodedPlace, fallbackName: string, fallbackStreet: string, fallbackCity: string, fallbackPostal: string): GeocodedPlace | null {
+    if (!raw?.location?.coordinates || raw.location.coordinates.length !== 2) {
+        return null;
+    }
+    const [lng, lat] = raw.location.coordinates;
+    // Reject (0,0) — backend Geocoder still returns a Place with (0,0) when no result.
+    if (lng === 0 && lat === 0) return null;
+
     return {
-        name: name || address,
-        street1: address,
-        city,
-        postal_code: postal,
-        country: "RS",
-        location: BELGRADE_LOCATION,
+        name: fallbackName || raw.name || raw.street1 || fallbackStreet,
+        street1: raw.street1 || fallbackStreet,
+        city: raw.city || fallbackCity,
+        province: raw.province,
+        country: raw.country || "RS",
+        postal_code: raw.postal_code || fallbackPostal,
+        neighborhood: raw.neighborhood,
+        building: raw.building,
+        location: raw.location,
     };
+}
+
+async function geocodeAddress(
+    token: string,
+    name: string,
+    street: string,
+    city: string,
+    postal: string
+): Promise<GeocodedPlace | null> {
+    const buildQuery = (streetVariant: string, cityVariant: string) =>
+        [streetVariant, cityVariant, postal, "Srbija"].filter(Boolean).join(", ");
+
+    const tryQuery = async (query: string) => {
+        const res = await fleetbaseApi<GeocodedPlace | GeocodedPlace[]>("geocoder/query", {
+            token,
+            params: { query, single: "1" },
+        });
+        if (!res.ok) return null;
+        const data = Array.isArray(res.data) ? res.data[0] : res.data;
+        if (!data) return null;
+        return pickPlaceFields(data, name, street, city, postal);
+    };
+
+    // Primary attempt with the address as typed in the spreadsheet.
+    let result = await tryQuery(buildQuery(street, city));
+    if (result) return result;
+
+    // Cyrillic fallback for Serbian addresses typed in latin.
+    if (hasLatinChars(street) || hasLatinChars(city)) {
+        result = await tryQuery(buildQuery(latinToCyrillic(street), latinToCyrillic(city)));
+        if (result) return result;
+    }
+
+    return null;
 }
 
 interface ImportResult {
@@ -46,11 +101,38 @@ export async function POST(request: NextRequest) {
     const result: ImportResult = { succeeded: [], failed: [] };
 
     for (const order of orders) {
+        const pickup = await geocodeAddress(
+            token,
+            order.pickupName,
+            order.pickupAddress,
+            order.pickupCity,
+            order.pickupPostal
+        );
+        if (!pickup) {
+            result.failed.push({
+                rowIndex: order.rowIndex,
+                error: `Adresa preuzimanja nije pronađena: ${order.pickupAddress}, ${order.pickupCity}`,
+            });
+            continue;
+        }
+
+        const dropoff = await geocodeAddress(
+            token,
+            order.dropoffName,
+            order.dropoffAddress,
+            order.dropoffCity,
+            order.dropoffPostal
+        );
+        if (!dropoff) {
+            result.failed.push({
+                rowIndex: order.rowIndex,
+                error: `Adresa dostave nije pronađena: ${order.dropoffAddress}, ${order.dropoffCity}`,
+            });
+            continue;
+        }
+
         const orderData = {
-            payload: {
-                pickup: buildPlace(order.pickupName, order.pickupAddress, order.pickupCity, order.pickupPostal),
-                dropoff: buildPlace(order.dropoffName, order.dropoffAddress, order.dropoffCity, order.dropoffPostal),
-            },
+            payload: { pickup, dropoff },
             notes: order.notes || undefined,
             scheduled_at: order.scheduledAt || undefined,
             order_config_uuid: orderConfigUuid,

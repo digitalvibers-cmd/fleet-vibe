@@ -4,20 +4,18 @@ import { fleetbaseApi } from "@/lib/api-client";
 import { resolveCustomerContact } from "@/lib/customer";
 import { getDefaultOrderConfigUuid } from "@/lib/order-config";
 
-/**
- * Ensures each place object has a `location` GeoJSON field.
- * Fleetbase requires `location` with type Point + coordinates.
- * If not provided, uses a default (Belgrade center).
- */
-function ensurePlaceLocation(place: Record<string, unknown> | undefined) {
-  if (!place) return place;
-  if (!place.location) {
-    place.location = {
-      type: "Point",
-      coordinates: [20.4489, 44.7866], // Belgrade default [lng, lat]
-    };
+// A place is valid if it is either a reference to an existing Place (uuid/public_id),
+// or has real coordinates from a geocoder result. Without this guard, the backend
+// happily creates Places at (0,0) and orders end up invisible on the operator map.
+function isValidPlaceReference(place: Record<string, unknown> | undefined): boolean {
+  if (!place) return false;
+  if (typeof place.uuid === "string" && place.uuid) return true;
+  if (typeof place.public_id === "string" && place.public_id) return true;
+  const location = place.location as { coordinates?: unknown } | undefined;
+  if (location && Array.isArray(location.coordinates) && location.coordinates.length === 2) {
+    return true;
   }
-  return place;
+  return false;
 }
 
 export async function GET(request: NextRequest) {
@@ -61,12 +59,29 @@ export async function POST(request: NextRequest) {
   // Resolve default order config
   const orderConfigUuid = await getDefaultOrderConfigUuid(token);
 
-  // Ensure places have location data
+  // Validate that every place has either a backend reference or real coordinates.
   if (body.payload) {
-    if (body.payload.pickup) ensurePlaceLocation(body.payload.pickup);
-    if (body.payload.dropoff) ensurePlaceLocation(body.payload.dropoff);
+    if (body.payload.pickup && !isValidPlaceReference(body.payload.pickup)) {
+      return NextResponse.json(
+        { error: "Adresa preuzimanja nije validirana — odaberite adresu iz predloga." },
+        { status: 400 }
+      );
+    }
+    if (body.payload.dropoff && !isValidPlaceReference(body.payload.dropoff)) {
+      return NextResponse.json(
+        { error: "Adresa dostave nije validirana — odaberite adresu iz predloga." },
+        { status: 400 }
+      );
+    }
     if (Array.isArray(body.payload.waypoints)) {
-      body.payload.waypoints.forEach(ensurePlaceLocation);
+      for (const wp of body.payload.waypoints) {
+        if (!isValidPlaceReference(wp)) {
+          return NextResponse.json(
+            { error: "Jedna od međustanica nije validirana — odaberite adresu iz predloga." },
+            { status: 400 }
+          );
+        }
+      }
     }
   }
 

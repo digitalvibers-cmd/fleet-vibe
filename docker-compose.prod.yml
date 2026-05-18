@@ -63,6 +63,7 @@ services:
       API_CACHE_ENABLED: "false"
       DATABASE_URL: "mysql://root:${DB_PASSWORD}@database/fleetbase"
       GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY}"
+      GOOGLE_MAPS_LOCALE: "sr"
       <<: *mail-env
     volumes:
       - ./packages/fleetops/server:/fleetbase/api/vendor/fleetbase/fleetops-api/server
@@ -70,6 +71,8 @@ services:
   queue:
     environment:
       DATABASE_URL: "mysql://root:${DB_PASSWORD}@database/fleetbase"
+      GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY}"
+      GOOGLE_MAPS_LOCALE: "sr"
       <<: *mail-env
     volumes:
       - ./packages/fleetops/server:/fleetbase/api/vendor/fleetbase/fleetops-api/server
@@ -77,12 +80,16 @@ services:
   scheduler:
     environment:
       DATABASE_URL: "mysql://root:${DB_PASSWORD}@database/fleetbase"
+      GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY}"
+      GOOGLE_MAPS_LOCALE: "sr"
       <<: *mail-env
 
   customer-portal:
     build:
       args:
         NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY}"
+        NEXT_PUBLIC_GOOGLE_MAPS_LANGUAGE: "sr"
+        NEXT_PUBLIC_GOOGLE_MAPS_REGION: "RS"
         NEXT_PUBLIC_PORTAL_URL: "https://flybox.rs"
     ports:
       - "3001:3000"

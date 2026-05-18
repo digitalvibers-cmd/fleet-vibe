@@ -38,7 +38,8 @@ class Geocoding
     {
         $httpClient = new Client();
         $provider   = new GoogleMaps($httpClient, null, config('services.google_maps.api_key', env('GOOGLE_MAPS_API_KEY')));
-        $geocoder   = new StatefulGeocoder($provider, 'en');
+        $locale     = config('services.google_maps.locale', env('GOOGLE_MAPS_LOCALE', 'sr'));
+        $geocoder   = new StatefulGeocoder($provider, $locale);
 
         try {
             if ($latitude && $longitude) {
@@ -83,7 +84,8 @@ class Geocoding
     {
         $httpClient = new Client();
         $provider   = new GoogleMaps($httpClient, null, config('services.google_maps.api_key', env('GOOGLE_MAPS_API_KEY')));
-        $geocoder   = new StatefulGeocoder($provider, 'en');
+        $locale     = config('services.google_maps.locale', env('GOOGLE_MAPS_LOCALE', 'sr'));
+        $geocoder   = new StatefulGeocoder($provider, $locale);
 
         if (empty($searchQuery)) {
             return collect();
@@ -129,7 +131,8 @@ class Geocoding
     {
         $httpClient = new Client();
         $provider   = new GoogleMaps($httpClient, null, config('services.google_maps.api_key', env('GOOGLE_MAPS_API_KEY')));
-        $geocoder   = new StatefulGeocoder($provider, 'en');
+        $locale     = config('services.google_maps.locale', env('GOOGLE_MAPS_LOCALE', 'sr'));
+        $geocoder   = new StatefulGeocoder($provider, $locale);
 
         if (empty($latitude) && empty($longitude)) {
             return collect();

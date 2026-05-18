@@ -1,8 +1,16 @@
 "use client";
 
 import { useRef, useEffect, useState, useCallback } from "react";
-import { MapPin, Search, X, Loader2 } from "lucide-react";
+import { MapPin, Search, X, Loader2, AlertCircle } from "lucide-react";
 import loadGoogleMaps from "@/lib/google-maps";
+import { latinToCyrillic, hasLatinChars } from "@/lib/serbian-translit";
+
+const SERBIA_BOUNDS = {
+  south: 42.23,
+  west: 18.83,
+  north: 46.19,
+  east: 23.01,
+};
 
 export interface PlaceData {
   name: string;
@@ -95,8 +103,39 @@ export default function PlaceAutocompleteInput({
 }: PlaceAutocompleteInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const geocoderRef = useRef<google.maps.Geocoder | null>(null);
   const [loading, setLoading] = useState(false);
   const [mapsReady, setMapsReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const runCyrillicFallback = useCallback(
+    async (rawInput: string) => {
+      if (!rawInput || !hasLatinChars(rawInput)) return false;
+      if (!geocoderRef.current) {
+        geocoderRef.current = new google.maps.Geocoder();
+      }
+      const cyrillicQuery = latinToCyrillic(rawInput);
+      try {
+        const { results } = await geocoderRef.current.geocode({
+          address: cyrillicQuery,
+          componentRestrictions: { country: "rs" },
+          bounds: SERBIA_BOUNDS,
+          region: "RS",
+        });
+        if (results && results.length > 0) {
+          const data = extractPlaceData(
+            results[0] as unknown as google.maps.places.PlaceResult
+          );
+          onSelect(data);
+          return true;
+        }
+      } catch {
+        // ZERO_RESULTS or network error — handled by caller
+      }
+      return false;
+    },
+    [onSelect]
+  );
 
   const initAutocomplete = useCallback(() => {
     const input = inputRef.current;
@@ -111,21 +150,47 @@ export default function PlaceAutocompleteInput({
         "name",
         "place_id",
       ],
+      componentRestrictions: { country: ["rs"] },
+      bounds: new google.maps.LatLngBounds(
+        { lat: SERBIA_BOUNDS.south, lng: SERBIA_BOUNDS.west },
+        { lat: SERBIA_BOUNDS.north, lng: SERBIA_BOUNDS.east }
+      ),
+      strictBounds: false,
     });
 
-    autocompleteRef.current.addListener("place_changed", () => {
+    autocompleteRef.current.addListener("place_changed", async () => {
       const place = autocompleteRef.current!.getPlace();
-      if (!place?.geometry) return;
+      setError(null);
 
+      // Happy path: user picked a suggestion with geometry
+      if (place?.geometry) {
+        setLoading(true);
+        try {
+          const data = extractPlaceData(place);
+          onSelect(data);
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
+      // No geometry — user typed and pressed Enter, or Autocomplete returned nothing.
+      // Try cyrillic transliteration as fallback (helps for Serbian addresses typed in latin).
+      const rawInput = input.value.trim();
+      if (!rawInput) return;
       setLoading(true);
       try {
-        const data = extractPlaceData(place);
-        onSelect(data);
+        const matched = await runCyrillicFallback(rawInput);
+        if (!matched) {
+          setError(
+            "Adresa nije pronađena. Probajte preciznije ili kontaktirajte podršku."
+          );
+        }
       } finally {
         setLoading(false);
       }
     });
-  }, [mapsReady, onSelect]);
+  }, [mapsReady, onSelect, runCyrillicFallback]);
 
   // Load Google Maps SDK
   useEffect(() => {
@@ -187,27 +252,42 @@ export default function PlaceAutocompleteInput({
   }
 
   return (
-    <div className="relative">
-      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-        {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-        ) : (
-          <Search className="h-4 w-4 text-muted-foreground" />
-        )}
+    <div>
+      <div className="relative">
+        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          ) : (
+            <Search className="h-4 w-4 text-muted-foreground" />
+          )}
+        </div>
+        <input
+          ref={(el) => {
+            (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+            if (el && mapsReady && !autocompleteRef.current) {
+              initAutocomplete();
+            }
+          }}
+          type="text"
+          placeholder={placeholder}
+          disabled={disabled}
+          autoComplete="off"
+          onInput={() => {
+            if (error) setError(null);
+          }}
+          className={`w-full rounded-lg border py-2 pl-9 pr-3 text-sm outline-none ${
+            error
+              ? "border-destructive focus:border-destructive"
+              : "border-border focus:border-primary"
+          }`}
+        />
       </div>
-      <input
-        ref={(el) => {
-          (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
-          if (el && mapsReady && !autocompleteRef.current) {
-            initAutocomplete();
-          }
-        }}
-        type="text"
-        placeholder={placeholder}
-        disabled={disabled}
-        autoComplete="off"
-        className="w-full rounded-lg border border-border py-2 pl-9 pr-3 text-sm outline-none focus:border-primary"
-      />
+      {error && (
+        <div className="mt-1.5 flex items-start gap-1.5 text-xs text-destructive">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
     </div>
   );
 }

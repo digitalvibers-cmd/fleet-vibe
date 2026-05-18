@@ -4,6 +4,14 @@ import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { later } from '@ember/runloop';
 import loadGoogleMaps from '../utils/google-maps-loader';
+import { latinToCyrillic, hasLatinChars } from '../utils/serbian-translit';
+
+const SERBIA_BOUNDS = {
+    south: 42.23,
+    west: 18.83,
+    north: 46.19,
+    east: 23.01,
+};
 
 /**
  * PlaceAutocompleteInput Component
@@ -99,6 +107,12 @@ export default class PlaceAutocompleteInputComponent extends Component {
         this.autocomplete = new this.googleMaps.places.Autocomplete(inputElement, {
             types: ['address'],
             fields: ['address_components', 'formatted_address', 'geometry', 'name', 'place_id'],
+            componentRestrictions: { country: ['rs'] },
+            bounds: new this.googleMaps.LatLngBounds(
+                { lat: SERBIA_BOUNDS.south, lng: SERBIA_BOUNDS.west },
+                { lat: SERBIA_BOUNDS.north, lng: SERBIA_BOUNDS.east }
+            ),
+            strictBounds: false,
         });
 
         this.autocomplete.addListener('place_changed', () => {
@@ -155,16 +169,58 @@ export default class PlaceAutocompleteInputComponent extends Component {
      * Handle the place_changed event from Google Autocomplete.
      * Extracts address components and creates a local Place-like object.
      */
-    _handlePlaceChanged() {
+    async _handlePlaceChanged() {
         const googlePlace = this.autocomplete.getPlace();
 
-        if (!googlePlace || !googlePlace.geometry) {
-            // User pressed Enter without selecting a result
+        if (googlePlace && googlePlace.geometry) {
+            this._applyPlace(googlePlace);
             return;
         }
 
-        this.isLoading = true;
+        // No geometry — user pressed Enter without picking a suggestion, or the
+        // Autocomplete dropdown returned nothing. Try the cyrillic transliteration
+        // fallback before giving up (e.g. "Dusana Pudje" → "Душана Пуђе").
+        const rawInput = this._inputElement?.value?.trim();
+        if (!rawInput) return;
 
+        this.isLoading = true;
+        try {
+            const matched = await this._geocodeCyrillicFallback(rawInput);
+            if (!matched) {
+                this.notifications.error('Adresa nije pronađena. Probajte preciznije ili kontaktirajte podršku.');
+            }
+        } finally {
+            this.isLoading = false;
+        }
+    }
+
+    async _geocodeCyrillicFallback(rawInput) {
+        if (!hasLatinChars(rawInput)) return false;
+        if (!this.googleMaps) return false;
+
+        const cyrillicQuery = latinToCyrillic(rawInput);
+        const geocoder = new this.googleMaps.Geocoder();
+        try {
+            const { results } = await geocoder.geocode({
+                address: cyrillicQuery,
+                componentRestrictions: { country: 'rs' },
+                bounds: new this.googleMaps.LatLngBounds(
+                    { lat: SERBIA_BOUNDS.south, lng: SERBIA_BOUNDS.west },
+                    { lat: SERBIA_BOUNDS.north, lng: SERBIA_BOUNDS.east }
+                ),
+                region: 'RS',
+            });
+            if (results && results.length > 0) {
+                this._applyPlace(results[0]);
+                return true;
+            }
+        } catch {
+            // ZERO_RESULTS or network error — treat as no match
+        }
+        return false;
+    }
+
+    _applyPlace(googlePlace) {
         try {
             const placeData = this._extractPlaceData(googlePlace);
 
@@ -174,7 +230,6 @@ export default class PlaceAutocompleteInputComponent extends Component {
             // the backend resolves it via Place::createFromMixed().
             const placeRecord = this.store.createRecord('place', placeData);
 
-            // Update display
             this.inputValue = '';
             if (this._inputElement) {
                 this._inputElement.value = '';
@@ -186,8 +241,6 @@ export default class PlaceAutocompleteInputComponent extends Component {
         } catch (error) {
             console.error('Error processing place selection:', error);
             this.notifications.error('Failed to process address. Please try again.');
-        } finally {
-            this.isLoading = false;
         }
     }
 
