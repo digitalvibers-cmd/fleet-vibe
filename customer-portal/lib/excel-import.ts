@@ -12,6 +12,8 @@ export interface ParsedOrder {
     dropoffPostal: string;
     notes: string;
     scheduledAt: string | null;
+    codAmount: string;
+    recipientPhone: string;
     isValid: boolean;
     validationErrors: string[];
 }
@@ -32,6 +34,8 @@ const COLUMN_MAP: Record<string, keyof ParsedOrder> = {
     "Poštanski broj dostave": "dropoffPostal",
     "Napomene": "notes",
     "Zakazano (YYYY-MM-DD HH:mm)": "scheduledAt",
+    "Cena otkupa (RSD)": "codAmount",
+    "Broj telefona primaoca": "recipientPhone",
 };
 
 function parseScheduledAt(raw: unknown): string | null {
@@ -74,6 +78,8 @@ export function parseOrdersFromExcel(buffer: ArrayBuffer): ParseResult {
             dropoffPostal: "",
             notes: "",
             scheduledAt: null,
+            codAmount: "",
+            recipientPhone: "",
             validationErrors: [],
         };
 
@@ -92,6 +98,15 @@ export function parseOrdersFromExcel(buffer: ArrayBuffer): ParseResult {
         if (!order.pickupCity) errors.push("Grad preuzimanja je obavezan");
         if (!order.dropoffAddress) errors.push("Adresa dostave je obavezna");
         if (!order.dropoffCity) errors.push("Grad dostave je obavezan");
+        if (order.codAmount && !/^\d+(\.\d{1,2})?$/.test(order.codAmount)) {
+            errors.push("Cena otkupa mora biti broj (npr. 1500 ili 1500.50)");
+        }
+        if (
+            order.recipientPhone &&
+            !/^[+0]\d[\d\s\-()]{5,}$/.test(order.recipientPhone)
+        ) {
+            errors.push("Broj telefona primaoca mora počinjati sa + ili 0");
+        }
 
         return {
             ...(order as ParsedOrder),
@@ -116,6 +131,8 @@ export const TEMPLATE_EXAMPLES = [
         "Poštanski broj dostave": "11000",
         "Napomene": "Zvoniti na interfon",
         "Zakazano (YYYY-MM-DD HH:mm)": "2025-05-20 10:00",
+        "Cena otkupa (RSD)": "1500",
+        "Broj telefona primaoca": "+381641234567",
     },
     {
         "Naziv preuzimanja": "Magacin A",
@@ -128,5 +145,7 @@ export const TEMPLATE_EXAMPLES = [
         "Poštanski broj dostave": "21000",
         "Napomene": "",
         "Zakazano (YYYY-MM-DD HH:mm)": "",
+        "Cena otkupa (RSD)": "",
+        "Broj telefona primaoca": "",
     },
 ];
