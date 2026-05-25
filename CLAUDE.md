@@ -122,6 +122,14 @@ Sledeći fajlovi u `packages/fleetops/` su izmenjeni za rad sa srpskim adresama 
 - `server/src/Support/Geocoding.php` — locale iz `GOOGLE_MAPS_LOCALE` env var (default `sr`) umesto hardkodovanog `'en'`.
 - `server/src/Models/Place.php` — `createFromGeocodingLookup` vraća `null` umesto Place sa `(0, 0)`; `getValuesFromGeocodingLookup` vraća `[]`; `createFromMixed` ne fallback-uje na `(0, 0)`; `createFromImportRow` preskaće red ako geocoding fail.
 - `server/config/geocoder.php` — default locale `'sr'` umesto `'us'`.
+- `addon/components/custom-field/input.hbs` (novi override iz `packages/ember-ui/`) + `addon/components/custom-field/input.js` (novi) + `app/components/custom-field/input.js` (novi re-export) — uklanja hardkodovan `(or @currency "USD")` fallback u money-input grani template-a. Nužno za RSD prikaz u svim `<CustomField::Input>` instancama unutar fleetops-engine bundle-a. Klasa ima `static logiVibeTemplateOverride = true;` da zaobiđe Ember-CLI "trivial re-export" build error — ako se ovo ikad refaktoriše, ne smanjivati telo klase na prazno. Pri upstream sync-u `packages/ember-ui/custom-field/input.hbs`, mora se manuelno re-aplicirati i ovde (diff sa upstream-om).
+
+### LogiVibe console (`console/app/`) overrides — RSD valuta
+
+Sledeći fajlovi NISU u submodulima — žive u `console/app/` i traju kroz sve upstream sync-ove. Postoje zbog upstream Fleetbase bug-a: GeoIP whois (`/int/v1/lookup/whois`) vraća `currency_code: "RSD"` (flat), ali `MoneyInput.js` i `CurrencySelect.js` čitaju `whois.currency.code` (nested) — schemas ne match-uju, pa svi money inputi padaju na hardkodovan `'USD'` fallback uprkos `companies.currency = 'RSD'`.
+
+- `console/app/services/current-user.js` — extends `@fleetbase/ember-core/services/current-user`; override-uje `loadWhois()` da posle fetch-a doda `whois.currency = { code: currency_code, name: currency_name }` ako fali nested polje. Ne dira upstream submodule.
+- `console/app/components/custom-field/input.{hbs,js}` — isti fix kao fleetops verzija, ali za main console bundle (non-engine kontekst). Template iste sadržine kao fleetops kopija — pri izmeni jedne, sinhronizovati drugu.
 
 ## Docker Console Build — pnpm Symlink Caveat
 
