@@ -3,6 +3,7 @@ import { requireValidSession } from "@/lib/auth";
 import { fleetbaseApi } from "@/lib/api-client";
 import { resolveCustomerContact } from "@/lib/customer";
 import { getDefaultOrderConfigUuid } from "@/lib/order-config";
+import { resolveCustomFieldValues } from "@/lib/custom-fields";
 import { latinToCyrillic, hasLatinChars } from "@/lib/serbian-translit";
 import type { ParsedOrder } from "@/lib/excel-import";
 import type { Order } from "@/lib/types";
@@ -131,6 +132,29 @@ export async function POST(request: NextRequest) {
             continue;
         }
 
+        let customFieldValues:
+            | { custom_field_uuid: string; value: string; value_type: "text" }[]
+            | undefined;
+        if (orderConfigUuid && (order.codAmount || order.recipientPhone)) {
+            const kv: { key: string; value: string }[] = [];
+            if (order.codAmount) kv.push({ key: "cena-otkupa", value: order.codAmount });
+            if (order.recipientPhone)
+                kv.push({ key: "broj-primaoca", value: order.recipientPhone });
+            const { resolved, unknownKeys } = await resolveCustomFieldValues(
+                token,
+                orderConfigUuid,
+                kv,
+            );
+            if (unknownKeys.length) {
+                result.failed.push({
+                    rowIndex: order.rowIndex,
+                    error: `Polja "Otkup" nisu konfigurisana u Order Config-u (${unknownKeys.join(", ")}). Kontaktirajte administratora.`,
+                });
+                continue;
+            }
+            if (resolved.length) customFieldValues = resolved;
+        }
+
         const orderData = {
             payload: { pickup, dropoff },
             notes: order.notes || undefined,
@@ -140,6 +164,7 @@ export async function POST(request: NextRequest) {
             customer_type: contact ? "Fleetbase\\FleetOps\\Models\\Contact" : undefined,
             status: "created",
             dispatched: false,
+            custom_field_values: customFieldValues,
         };
 
         const res = await fleetbaseApi<{ order: Order }>("orders", {

@@ -8,6 +8,8 @@ import {
   Calendar,
   FileText,
   Send,
+  Banknote,
+  Phone,
 } from "lucide-react";
 import Header from "@/components/Header";
 import PlaceAutocompleteInput, {
@@ -114,6 +116,8 @@ export default function NewOrderPage() {
   const [dropoffs, setDropoffs] = useState<LocationEntry[]>([emptyLocation()]);
   const [scheduledAt, setScheduledAt] = useState("");
   const [notes, setNotes] = useState("");
+  const [codAmount, setCodAmount] = useState("");
+  const [recipientPhone, setRecipientPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -161,10 +165,18 @@ export default function NewOrderPage() {
         payload.waypoints = waypoints;
       }
 
+      const customFieldValues: { key: string; value: string }[] = [];
+      const codTrim = codAmount.trim();
+      const phoneTrim = recipientPhone.trim();
+      if (codTrim) customFieldValues.push({ key: "cena-otkupa", value: codTrim });
+      if (phoneTrim && phoneTrim !== "+381")
+        customFieldValues.push({ key: "broj-primaoca", value: phoneTrim });
+
       const orderData: Record<string, unknown> = {
         payload,
         notes: notes || undefined,
         scheduled_at: scheduledAt || undefined,
+        custom_field_values: customFieldValues.length ? customFieldValues : undefined,
       };
 
       const res = await fetch("/api/orders", {
@@ -249,6 +261,53 @@ export default function NewOrderPage() {
               placeholder="Posebna uputstva, detalji o paketu, itd."
               className="w-full resize-none rounded-xl border border-border px-3 py-2 text-sm outline-none focus:border-primary"
             />
+          </div>
+
+          {/* Otkup */}
+          <div className="rounded-2xl border border-border bg-white p-4">
+            <p className="mb-3 text-sm font-semibold">Otkup (opciono)</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                  <Banknote className="h-3.5 w-3.5 text-primary" />
+                  Cena otkupa
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="1"
+                    value={codAmount}
+                    onChange={(e) => setCodAmount(e.target.value)}
+                    placeholder="0"
+                    className="w-full rounded-xl border border-border px-3 py-2 pr-14 text-sm outline-none focus:border-primary"
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                    RSD
+                  </span>
+                </div>
+              </div>
+              <div>
+                <label className="mb-1.5 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                  <Phone className="h-3.5 w-3.5 text-primary" />
+                  Broj telefona primaoca
+                </label>
+                <input
+                  type="tel"
+                  value={recipientPhone}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setRecipientPhone(v === "" ? "+381" : v);
+                  }}
+                  onFocus={() => {
+                    if (!recipientPhone) setRecipientPhone("+381");
+                  }}
+                  placeholder="+381 ..."
+                  className="w-full rounded-xl border border-border px-3 py-2 text-sm outline-none focus:border-primary"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Submit */}

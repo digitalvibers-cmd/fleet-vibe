@@ -3,6 +3,7 @@ import { requireValidSession } from "@/lib/auth";
 import { fleetbaseApi } from "@/lib/api-client";
 import { resolveCustomerContact } from "@/lib/customer";
 import { getDefaultOrderConfigUuid } from "@/lib/order-config";
+import { resolveCustomFieldValues } from "@/lib/custom-fields";
 
 // A place is valid if it is either a reference to an existing Place (uuid/public_id),
 // or has real coordinates from a geocoder result. Without this guard, the backend
@@ -85,6 +86,27 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Resolve custom_field_values (key -> custom_field_uuid) if present
+  let resolvedCustomFieldValues:
+    | { custom_field_uuid: string; value: string; value_type: "text" }[]
+    | undefined;
+  if (Array.isArray(body.custom_field_values) && body.custom_field_values.length && orderConfigUuid) {
+    const { resolved, unknownKeys } = await resolveCustomFieldValues(
+      token,
+      orderConfigUuid,
+      body.custom_field_values,
+    );
+    if (unknownKeys.length) {
+      return NextResponse.json(
+        {
+          error: `Sledeća polja nisu konfigurisana u Order Config-u: ${unknownKeys.join(", ")}. Kontaktirajte administratora.`,
+        },
+        { status: 400 },
+      );
+    }
+    if (resolved.length) resolvedCustomFieldValues = resolved;
+  }
+
   // Build order data — inject customer and config server-side
   const orderData: Record<string, unknown> = {
     ...body,
@@ -95,6 +117,7 @@ export async function POST(request: NextRequest) {
       : undefined,
     status: "created",
     dispatched: false,
+    custom_field_values: resolvedCustomFieldValues,
   };
 
   // Strip any client-supplied customer field for security
