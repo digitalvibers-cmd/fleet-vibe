@@ -25,7 +25,10 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-prod-hetzner
+  # Shared with deploy-portal-prod.yml — both scripts cd into /opt/fleetvibe-prod
+  # and run `git fetch origin`. Parallel runs race on the origin/main ref and
+  # one fails with "cannot lock ref". Serialize via shared concurrency group.
+  group: hetzner-prod
   cancel-in-progress: false
 
 jobs:

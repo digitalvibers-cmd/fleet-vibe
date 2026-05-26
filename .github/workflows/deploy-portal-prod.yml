@@ -18,7 +18,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-portal-prod-hetzner
+  # Shared with deploy-prod.yml — see comment there.
+  group: hetzner-prod
   cancel-in-progress: false
 
 jobs:
