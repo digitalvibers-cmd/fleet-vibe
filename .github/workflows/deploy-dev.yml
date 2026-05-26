@@ -24,7 +24,12 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-dev-hetzner
+  # Shared with deploy-portal-dev.yml — both scripts cd into /opt/fleetvibe and
+  # run `git fetch origin`. Running them in parallel races on
+  # `.git/refs/remotes/origin/dev` and one fetch fails with
+  # "cannot lock ref: is at X but expected Y". Serializing them via a shared
+  # concurrency group makes the second fetch a no-op instead of a conflict.
+  group: hetzner-dev
   cancel-in-progress: false
 
 jobs:
