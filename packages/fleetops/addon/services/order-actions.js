@@ -388,6 +388,7 @@ export default class OrderActionsService extends ResourceActionService {
 
                 try {
                     await order.save();
+                    await order.reload();
                     this.notifications.success(options.successNotification || this.intl.t('fleet-ops.operations.orders.index.view.update-success', { orderId: order.public_id }));
                     modal.done();
                 } catch (error) {

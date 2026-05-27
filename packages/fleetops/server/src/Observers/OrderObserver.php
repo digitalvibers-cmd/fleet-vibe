@@ -4,12 +4,14 @@ namespace Fleetbase\FleetOps\Observers;
 
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Notifications\OrderCreated;
+use Fleetbase\FleetOps\Support\CustomFieldRelinker;
 use Fleetbase\FleetOps\Support\LiveCacheService;
 use Fleetbase\Support\NotificationRegistry;
 use Illuminate\Support\Facades\Cache;
 
 class OrderObserver
 {
+
     /**
      * Handle the Order "created" event.
      *
@@ -62,6 +64,17 @@ class OrderObserver
         }
 
         $this->invalidateCache($order);
+
+        // Custom field value re-link on order type change.
+        // Observers may be re-instantiated between updating/updated events, so we read
+        // the previous order_config_uuid directly from the model via getOriginal() in
+        // the updated event (Eloquent syncs original AFTER firing updated).
+        if ($order->wasChanged('order_config_uuid')) {
+            $oldConfigUuid = $order->getOriginal('order_config_uuid');
+            if ($oldConfigUuid && $oldConfigUuid !== $order->order_config_uuid) {
+                app(CustomFieldRelinker::class)->relinkForOrder($order, $oldConfigUuid);
+            }
+        }
     }
 
     /**
