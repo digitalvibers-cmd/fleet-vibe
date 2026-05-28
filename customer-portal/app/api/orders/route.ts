@@ -3,7 +3,7 @@ import { requireValidSession } from "@/lib/auth";
 import { fleetbaseApi } from "@/lib/api-client";
 import { resolveCustomerContact } from "@/lib/customer";
 import { getDefaultOrderConfigUuid } from "@/lib/order-config";
-import { resolveCustomFieldValues } from "@/lib/custom-fields";
+import { resolveCustomFieldValues, enrichOrdersResponse } from "@/lib/custom-fields";
 
 // A place is valid if it is either a reference to an existing Place (uuid/public_id),
 // or has real coordinates from a geocoder result. Without this guard, the backend
@@ -43,7 +43,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(result.data, { status: result.status });
   }
 
-  return NextResponse.json(result.data);
+  const configUuid = await getDefaultOrderConfigUuid(token);
+  const enriched = await enrichOrdersResponse(
+    token,
+    configUuid,
+    result.data as { orders?: import("@/lib/types").Order[] }
+  );
+
+  return NextResponse.json(enriched);
 }
 
 export async function POST(request: NextRequest) {

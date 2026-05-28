@@ -43,6 +43,22 @@ export interface TrackingStatus {
   created_at: string;
 }
 
+export interface CustomFieldValue {
+  id?: string;
+  uuid?: string;
+  custom_field_uuid: string;
+  value: string;
+  // Backend može (ali ne mora) serijalizovati nested CustomField. Kad je
+  // pristuno, koristi se za UI mapiranje preko name slug-a. Kad fali,
+  // serverski handler (`lib/custom-fields.ts:enrichCustomFieldValues`)
+  // ga dodaje na osnovu cached defs.
+  custom_field?: {
+    uuid: string;
+    name: string;
+    label?: string;
+  } | null;
+}
+
 export interface Order {
   id: string;
   uuid: string;
@@ -71,6 +87,7 @@ export interface Order {
     name: string;
     phone: string;
   } | null;
+  custom_field_values?: CustomFieldValue[];
 }
 
 export interface OrdersResponse {

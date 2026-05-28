@@ -12,6 +12,7 @@ import {
   Phone,
 } from "lucide-react";
 import Header from "@/components/Header";
+import Toast from "@/components/Toast";
 import PlaceAutocompleteInput, {
   type PlaceData,
 } from "@/components/PlaceAutocompleteInput";
@@ -120,13 +121,18 @@ export default function NewOrderPage() {
   const [recipientPhone, setRecipientPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
-    const validPickups = pickups.filter((p) => p.place?.street1);
-    const validDropoffs = dropoffs.filter((d) => d.place?.street1);
+    const validPickups = pickups.filter(
+      (p) => p.place?.location?.coordinates?.length === 2
+    );
+    const validDropoffs = dropoffs.filter(
+      (d) => d.place?.location?.coordinates?.length === 2
+    );
 
     if (validPickups.length === 0 || validDropoffs.length === 0) {
       setError("Izaberite najmanje jednu adresu preuzimanja i jednu adresu isporuke.");
@@ -197,7 +203,14 @@ export default function NewOrderPage() {
         return;
       }
 
-      router.push("/dashboard");
+      const publicId: string | undefined =
+        data?.order?.public_id || data?.public_id;
+      setSuccessMsg(
+        publicId
+          ? `Porudžbina ${publicId} je uspešno kreirana.`
+          : "Porudžbina je uspešno kreirana."
+      );
+      setTimeout(() => router.push("/dashboard"), 1500);
     } catch {
       setError("Greška u mreži. Pokušajte ponovo.");
     } finally {
@@ -313,7 +326,7 @@ export default function NewOrderPage() {
           {/* Submit */}
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || successMsg !== null}
             className="flex w-full items-center justify-center gap-2 rounded-[25px] bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
           >
             <Send className="h-4 w-4" />
@@ -321,6 +334,14 @@ export default function NewOrderPage() {
           </button>
         </form>
       </main>
+
+      {successMsg && (
+        <Toast
+          message={successMsg}
+          variant="success"
+          onDismiss={() => setSuccessMsg(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { fleetbaseApi } from "./api-client";
+import type { CustomFieldValue, Order } from "./types";
 
 // Fleetbase custom_fields.name is a dasherized slug auto-generated from the
 // admin UI's Field Label (e.g. label "Cena otkupa" -> name "cena-otkupa").
@@ -101,4 +102,82 @@ export async function resolveCustomFieldValues(
   }
 
   return { resolved, unknownKeys };
+}
+
+/**
+ * Vraća vrednost custom field-a po name slug-u (npr "cena-otkupa") iz
+ * jednog Order objekta. Podržava dva oblika koje backend može serijalizovati:
+ *   1) `cfv.custom_field.name` (nested)
+ *   2) samo `cfv.custom_field_uuid` (uz pomoć defs mape za rezoluciju)
+ *
+ * UI komponentama trebaju samo nesirovi name slugovi — defs mapa je opcionalna.
+ */
+export function getCustomFieldValue(
+  cfvs: CustomFieldValue[] | undefined,
+  key: string,
+  defs?: Record<string, CustomFieldDef>
+): string | null {
+  if (!cfvs?.length) return null;
+  for (const cfv of cfvs) {
+    if (cfv.custom_field?.name === key) {
+      const v = cfv.value;
+      return v != null && String(v).trim() !== "" ? String(v) : null;
+    }
+    if (defs && defs[key]?.uuid === cfv.custom_field_uuid) {
+      const v = cfv.value;
+      return v != null && String(v).trim() !== "" ? String(v) : null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Server-side: ako odgovor backenda ne uključuje nested `custom_field`
+ * objekat u svakoj CFV, ručno ga dopuni iz cached defs mape kako bi UI
+ * mogao da radi `cfv.custom_field.name`.
+ *
+ * Tiho preskače CFV-e bez poklapanja (orphaned uuid).
+ */
+export function enrichCustomFieldValues(
+  cfvs: CustomFieldValue[] | undefined,
+  defs: Record<string, CustomFieldDef>
+): CustomFieldValue[] {
+  if (!cfvs?.length) return [];
+  const byUuid: Record<string, CustomFieldDef> = {};
+  for (const def of Object.values(defs)) byUuid[def.uuid] = def;
+  return cfvs.map((cfv) => {
+    if (cfv.custom_field?.name) return cfv;
+    const def = byUuid[cfv.custom_field_uuid];
+    if (!def) return cfv;
+    return {
+      ...cfv,
+      custom_field: { uuid: def.uuid, name: def.name, label: def.label },
+    };
+  });
+}
+
+/**
+ * Ulazni param: response objekat sa GET /int/v1/orders ili /int/v1/orders/{id}.
+ * Mutira (i vraća) isti objekat, dopunjujući custom_field_values nested custom_field-om.
+ * No-op ako defs nisu dostupne.
+ */
+export async function enrichOrdersResponse<T extends { orders?: Order[]; order?: Order } & Record<string, unknown>>(
+  token: string,
+  orderConfigUuid: string | null,
+  payload: T
+): Promise<T> {
+  if (!orderConfigUuid) return payload;
+  const defs = await getOrderCustomFields(token, orderConfigUuid);
+  if (!Object.keys(defs).length) return payload;
+
+  const enrichOne = (order: Order | undefined): void => {
+    if (!order?.custom_field_values?.length) return;
+    order.custom_field_values = enrichCustomFieldValues(order.custom_field_values, defs);
+  };
+
+  if (Array.isArray(payload.orders)) {
+    for (const o of payload.orders) enrichOne(o);
+  }
+  if (payload.order) enrichOne(payload.order);
+  return payload;
 }
