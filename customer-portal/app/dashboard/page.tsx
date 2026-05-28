@@ -11,8 +11,15 @@ import {
   RefreshCw,
   Search,
   X,
+  Banknote,
+  Phone,
 } from "lucide-react";
 import type { Order } from "@/lib/types";
+import {
+  COD_AMOUNT_KEY,
+  RECIPIENT_PHONE_KEY,
+  getCustomFieldValue,
+} from "@/lib/custom-fields";
 import Header from "@/components/Header";
 
 const ARCHIVE_STATUSES = ["completed", "canceled", "order_canceled", "expired"];
@@ -295,61 +302,97 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {orders.map((order) => (
-              <button
-                key={order.id}
-                onClick={() => router.push(`/orders/${order.public_id}`)}
-                className="group flex w-full items-start gap-4 rounded-2xl border border-border bg-white p-4 text-left transition hover:border-primary/30 hover:shadow-sm"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="text-sm font-semibold">
-                      {order.tracking_number?.tracking_number ||
-                        order.public_id}
-                    </span>
-                    <StatusBadge status={order.status} />
-                  </div>
-
-                  {order.payload?.pickup && (
-                    <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                      <MapPin className="mt-0.5 h-3 w-3 shrink-0 text-green-600" />
-                      <span className="truncate">
-                        {order.payload.pickup.street1 ||
-                          order.payload.pickup.name}
-                        {order.payload.pickup.city &&
-                          `, ${order.payload.pickup.city}`}
+            {orders.map((order) => {
+              const dropoffName = order.payload?.dropoff?.name?.trim() || null;
+              const dropoffStreet = order.payload?.dropoff?.street1?.trim() || null;
+              const showDropoffName = dropoffName && dropoffName !== dropoffStreet;
+              const codAmount = getCustomFieldValue(
+                order.custom_field_values,
+                COD_AMOUNT_KEY
+              );
+              const recipientPhone = getCustomFieldValue(
+                order.custom_field_values,
+                RECIPIENT_PHONE_KEY
+              );
+              return (
+                <button
+                  key={order.id}
+                  onClick={() => router.push(`/orders/${order.public_id}`)}
+                  className="group flex w-full items-start gap-4 rounded-2xl border border-border bg-white p-4 text-left transition hover:border-primary/30 hover:shadow-sm"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-sm font-semibold">
+                        {order.tracking_number?.tracking_number ||
+                          order.public_id}
                       </span>
+                      <StatusBadge status={order.status} />
                     </div>
-                  )}
-                  {order.payload?.dropoff && (
-                    <div className="mt-0.5 flex items-start gap-1.5 text-xs text-muted-foreground">
-                      <MapPin className="mt-0.5 h-3 w-3 shrink-0 text-red-600" />
-                      <span className="truncate">
-                        {order.payload.dropoff.street1 ||
-                          order.payload.dropoff.name}
-                        {order.payload.dropoff.city &&
-                          `, ${order.payload.dropoff.city}`}
-                      </span>
-                    </div>
-                  )}
 
-                  <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {formatDate(order.created_at)}
-                    </span>
-                    {order.scheduled_at && (
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        Zakazano: {formatDate(order.scheduled_at)}
-                      </span>
+                    {order.payload?.pickup && (
+                      <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                        <MapPin className="mt-0.5 h-3 w-3 shrink-0 text-green-600" />
+                        <span className="truncate">
+                          {order.payload.pickup.street1 ||
+                            order.payload.pickup.name}
+                          {order.payload.pickup.city &&
+                            `, ${order.payload.pickup.city}`}
+                        </span>
+                      </div>
                     )}
-                  </div>
-                </div>
+                    {order.payload?.dropoff && (
+                      <div className="mt-0.5 flex items-start gap-1.5 text-xs text-muted-foreground">
+                        <MapPin className="mt-0.5 h-3 w-3 shrink-0 text-red-600" />
+                        <span className="truncate">
+                          {order.payload.dropoff.street1 ||
+                            order.payload.dropoff.name}
+                          {order.payload.dropoff.city &&
+                            `, ${order.payload.dropoff.city}`}
+                        </span>
+                      </div>
+                    )}
 
-                <ChevronRight className="mt-2 h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-primary" />
-              </button>
-            ))}
+                    {(showDropoffName || codAmount || recipientPhone) && (
+                      <div className="mt-1.5 space-y-0.5 text-xs text-muted-foreground">
+                        {showDropoffName && (
+                          <div className="flex items-center gap-1.5">
+                            <Package className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{dropoffName}</span>
+                          </div>
+                        )}
+                        {codAmount && (
+                          <div className="flex items-center gap-1.5">
+                            <Banknote className="h-3 w-3 shrink-0" />
+                            <span>{codAmount} RSD</span>
+                          </div>
+                        )}
+                        {recipientPhone && (
+                          <div className="flex items-center gap-1.5">
+                            <Phone className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{recipientPhone}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {formatDate(order.created_at)}
+                      </span>
+                      {order.scheduled_at && (
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          Zakazano: {formatDate(order.scheduled_at)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <ChevronRight className="mt-2 h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-primary" />
+                </button>
+              );
+            })}
           </div>
         )}
       </main>

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthToken } from "@/lib/auth";
 import { fleetbaseApi } from "@/lib/api-client";
+import { getDefaultOrderConfigUuid } from "@/lib/order-config";
+import { enrichOrdersResponse } from "@/lib/custom-fields";
+import type { Order } from "@/lib/types";
 
 export async function GET(
   _request: NextRequest,
@@ -18,7 +21,21 @@ export async function GET(
     return NextResponse.json(result.data, { status: result.status });
   }
 
-  return NextResponse.json(result.data);
+  // Fleetbase single-order GET vraća order objekat na top level (ne pod ključem),
+  // dok lista vraća { orders: [...] }. Pakujemo i jedno i drugo da bismo dopunili nested custom_field.
+  const raw = result.data as Order | { order?: Order };
+  const wrapped = (raw && typeof raw === "object" && "order" in raw && raw.order)
+    ? (raw as { order: Order })
+    : { order: raw as Order };
+
+  const configUuid = await getDefaultOrderConfigUuid(token);
+  await enrichOrdersResponse(token, configUuid, wrapped);
+
+  // Vrati isti shape koji je backend vratio.
+  if (raw && typeof raw === "object" && "order" in raw) {
+    return NextResponse.json(raw);
+  }
+  return NextResponse.json(wrapped.order);
 }
 
 export async function DELETE(

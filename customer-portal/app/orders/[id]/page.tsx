@@ -14,6 +14,11 @@ import {
   XCircle,
 } from "lucide-react";
 import type { Order } from "@/lib/types";
+import {
+  COD_AMOUNT_KEY,
+  RECIPIENT_PHONE_KEY,
+  getCustomFieldValue,
+} from "@/lib/custom-fields";
 import Header from "@/components/Header";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -131,6 +136,14 @@ export default function OrderDetailPage() {
   }
 
   const canCancel = ["created", "dispatched"].includes(order.status);
+  const dropoffName = order.payload?.dropoff?.name?.trim() || null;
+  const dropoffStreet = order.payload?.dropoff?.street1?.trim() || null;
+  const showDropoffName = dropoffName && dropoffName !== dropoffStreet;
+  const codAmount = getCustomFieldValue(order.custom_field_values, COD_AMOUNT_KEY);
+  const recipientPhone = getCustomFieldValue(
+    order.custom_field_values,
+    RECIPIENT_PHONE_KEY
+  );
 
   return (
     <div className="min-h-full bg-muted/30">
@@ -221,6 +234,29 @@ export default function OrderDetailPage() {
                   <Calendar className="h-3 w-3" />
                   {formatDate(order.scheduled_at)}
                 </span>
+              </div>
+            )}
+            {showDropoffName && (
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Naziv dostave</span>
+                <span className="font-medium text-right">{dropoffName}</span>
+              </div>
+            )}
+            {codAmount && (
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Cena otkupa</span>
+                <span className="font-medium">{codAmount} RSD</span>
+              </div>
+            )}
+            {recipientPhone && (
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Telefon primaoca</span>
+                <a
+                  href={`tel:${recipientPhone}`}
+                  className="font-medium text-primary hover:underline"
+                >
+                  {recipientPhone}
+                </a>
               </div>
             )}
             {order.notes && (

@@ -1,7 +1,13 @@
 "use client";
 
 import { useRef, useEffect, useState, useCallback } from "react";
-import { MapPin, Search, X, Loader2, AlertCircle } from "lucide-react";
+import {
+  Search,
+  X,
+  Loader2,
+  AlertTriangle,
+  CheckCircle2,
+} from "lucide-react";
 import loadGoogleMaps from "@/lib/google-maps";
 import { latinToCyrillic, hasLatinChars } from "@/lib/serbian-translit";
 
@@ -31,6 +37,14 @@ export interface PlaceData {
     formatted_address: string;
   };
 }
+
+type SyncStatus =
+  | "empty"
+  | "validating"
+  | "valid"
+  | "stale"
+  | "not_found"
+  | "error";
 
 interface PlaceAutocompleteInputProps {
   selectedPlace: PlaceData | null;
@@ -104,35 +118,79 @@ export default function PlaceAutocompleteInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [mapsReady, setMapsReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestSeqRef = useRef(0);
+  const lastGeocodedQueryRef = useRef<string>("");
+  const justPickedFromAutocompleteRef = useRef(false);
 
-  const runCyrillicFallback = useCallback(
-    async (rawInput: string) => {
-      if (!rawInput || !hasLatinChars(rawInput)) return false;
+  const [mapsReady, setMapsReady] = useState(false);
+  const initialFormatted =
+    selectedPlace?.meta?.formatted_address || selectedPlace?.address || "";
+  const [inputValue, setInputValue] = useState<string>(initialFormatted);
+  const [lastValidPlace, setLastValidPlace] = useState<PlaceData | null>(
+    selectedPlace
+  );
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(
+    selectedPlace ? "valid" : "empty"
+  );
+
+  const runGeocode = useCallback(
+    async (rawQuery: string) => {
+      const trimmed = rawQuery.trim();
+      if (!trimmed) {
+        setSyncStatus("empty");
+        return;
+      }
+      const lowered = trimmed.toLowerCase();
+      if (lowered === lastGeocodedQueryRef.current) return;
+
+      const mySeq = ++requestSeqRef.current;
+      setSyncStatus("validating");
+
       if (!geocoderRef.current) {
         geocoderRef.current = new google.maps.Geocoder();
       }
-      const cyrillicQuery = latinToCyrillic(rawInput);
+
+      const queryForGeocoder = hasLatinChars(trimmed)
+        ? latinToCyrillic(trimmed)
+        : trimmed;
+
       try {
         const { results } = await geocoderRef.current.geocode({
-          address: cyrillicQuery,
+          address: queryForGeocoder,
           componentRestrictions: { country: "rs" },
           bounds: SERBIA_BOUNDS,
           region: "RS",
         });
-        if (results && results.length > 0) {
-          const data = extractPlaceData(
-            results[0] as unknown as google.maps.places.PlaceResult
-          );
-          onSelect(data);
-          return true;
+
+        if (mySeq !== requestSeqRef.current) return;
+        lastGeocodedQueryRef.current = lowered;
+
+        if (!results || results.length === 0) {
+          setSyncStatus("not_found");
+          return;
         }
-      } catch {
-        // ZERO_RESULTS or network error — handled by caller
+
+        const top = results[0] as unknown as google.maps.places.PlaceResult;
+        if (!top.geometry?.location) {
+          setSyncStatus("not_found");
+          return;
+        }
+
+        const data = extractPlaceData(top);
+        setLastValidPlace(data);
+        onSelect(data);
+        setSyncStatus("valid");
+      } catch (err) {
+        if (mySeq !== requestSeqRef.current) return;
+        lastGeocodedQueryRef.current = lowered;
+        const code = (err as { code?: string } | undefined)?.code;
+        if (code === "ZERO_RESULTS") {
+          setSyncStatus("not_found");
+        } else {
+          setSyncStatus("error");
+        }
       }
-      return false;
     },
     [onSelect]
   );
@@ -160,53 +218,50 @@ export default function PlaceAutocompleteInput({
 
     autocompleteRef.current.addListener("place_changed", async () => {
       const place = autocompleteRef.current!.getPlace();
-      setError(null);
 
-      // Happy path: user picked a suggestion with geometry
       if (place?.geometry) {
-        setLoading(true);
-        try {
-          const data = extractPlaceData(place);
-          onSelect(data);
-        } finally {
-          setLoading(false);
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+          debounceTimerRef.current = null;
         }
+        requestSeqRef.current++;
+
+        const data = extractPlaceData(place);
+        const formatted = data.meta.formatted_address || data.address;
+        justPickedFromAutocompleteRef.current = true;
+        setInputValue(formatted);
+        setLastValidPlace(data);
+        onSelect(data);
+        lastGeocodedQueryRef.current = formatted.trim().toLowerCase();
+        setSyncStatus("valid");
         return;
       }
 
-      // No geometry — user typed and pressed Enter, or Autocomplete returned nothing.
-      // Try cyrillic transliteration as fallback (helps for Serbian addresses typed in latin).
-      const rawInput = input.value.trim();
-      if (!rawInput) return;
-      setLoading(true);
-      try {
-        const matched = await runCyrillicFallback(rawInput);
-        if (!matched) {
-          setError(
-            "Adresa nije pronađena. Probajte preciznije ili kontaktirajte podršku."
-          );
-        }
-      } finally {
-        setLoading(false);
+      const raw = (input.value || "").trim();
+      if (!raw) {
+        setSyncStatus("empty");
+        return;
       }
+      await runGeocode(raw);
     });
-  }, [mapsReady, onSelect, runCyrillicFallback]);
+  }, [mapsReady, onSelect, runGeocode]);
 
-  // Load Google Maps SDK
   useEffect(() => {
     loadGoogleMaps()
       .then(() => setMapsReady(true))
       .catch((err) => console.error("Google Maps load error:", err));
   }, []);
 
-  // Bind autocomplete when input is available and maps are ready
   useEffect(() => {
     initAutocomplete();
   }, [initAutocomplete]);
 
-  // Cleanup
   useEffect(() => {
     return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
       if (autocompleteRef.current) {
         google.maps.event.clearInstanceListeners(autocompleteRef.current);
         autocompleteRef.current = null;
@@ -214,52 +269,101 @@ export default function PlaceAutocompleteInput({
     };
   }, []);
 
-  // Auto-focus search input when clearing selection
   useEffect(() => {
-    if (!selectedPlace && inputRef.current) {
-      const timer = setTimeout(() => inputRef.current?.focus(), 50);
-      return () => clearTimeout(timer);
+    if (selectedPlace === null && lastValidPlace !== null) {
+      setInputValue("");
+      setLastValidPlace(null);
+      setSyncStatus("empty");
+      lastGeocodedQueryRef.current = "";
+      requestSeqRef.current++;
+    } else if (selectedPlace && !lastValidPlace) {
+      const formatted =
+        selectedPlace.meta?.formatted_address || selectedPlace.address || "";
+      setInputValue(formatted);
+      setLastValidPlace(selectedPlace);
+      setSyncStatus("valid");
+      lastGeocodedQueryRef.current = formatted.trim().toLowerCase();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPlace]);
 
-  const displayAddress = selectedPlace
-    ? selectedPlace.street1 && selectedPlace.city
-      ? `${selectedPlace.street1}, ${selectedPlace.city}`
-      : selectedPlace.street1 || selectedPlace.address || selectedPlace.name
-    : "";
+  const handleUserTyping = useCallback(
+    (next: string) => {
+      if (justPickedFromAutocompleteRef.current) {
+        justPickedFromAutocompleteRef.current = false;
+        return;
+      }
+      const trimmed = next.trim();
+      if (!trimmed) {
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+          debounceTimerRef.current = null;
+        }
+        requestSeqRef.current++;
+        setLastValidPlace(null);
+        onSelect(null);
+        setSyncStatus("empty");
+        lastGeocodedQueryRef.current = "";
+        return;
+      }
+      setSyncStatus(lastValidPlace ? "stale" : "validating");
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(() => {
+        debounceTimerRef.current = null;
+        void runGeocode(trimmed);
+      }, 500);
+    },
+    [lastValidPlace, onSelect, runGeocode]
+  );
 
-  if (selectedPlace) {
-    return (
-      <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
-        <MapPin className="h-4 w-4 shrink-0 text-primary" />
-        <span className="flex-1 truncate text-sm" title={displayAddress}>
-          {displayAddress}
-        </span>
-        {!disabled && (
-          <button
-            type="button"
-            onClick={() => {
-              autocompleteRef.current = null;
-              onSelect(null);
-            }}
-            className="shrink-0 rounded-full p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </div>
-    );
-  }
+  const handleClear = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    requestSeqRef.current++;
+    setInputValue("");
+    setLastValidPlace(null);
+    onSelect(null);
+    setSyncStatus("empty");
+    lastGeocodedQueryRef.current = "";
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }, [onSelect]);
+
+  const renderLeadingIcon = () => {
+    if (syncStatus === "validating") {
+      return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
+    }
+    if (syncStatus === "valid") {
+      return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
+    }
+    if (syncStatus === "stale" || syncStatus === "not_found") {
+      return <AlertTriangle className="h-4 w-4 text-amber-500" />;
+    }
+    if (syncStatus === "error") {
+      return <AlertTriangle className="h-4 w-4 text-destructive" />;
+    }
+    return <Search className="h-4 w-4 text-muted-foreground" />;
+  };
+
+  const borderClass = (() => {
+    if (syncStatus === "valid") {
+      return "border-emerald-300 focus:border-emerald-500";
+    }
+    if (syncStatus === "stale" || syncStatus === "not_found") {
+      return "border-amber-300 focus:border-amber-500";
+    }
+    if (syncStatus === "error") {
+      return "border-destructive focus:border-destructive";
+    }
+    return "border-border focus:border-primary";
+  })();
 
   return (
     <div>
       <div className="relative">
         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          ) : (
-            <Search className="h-4 w-4 text-muted-foreground" />
-          )}
+          {renderLeadingIcon()}
         </div>
         <input
           ref={(el) => {
@@ -269,23 +373,50 @@ export default function PlaceAutocompleteInput({
             }
           }}
           type="text"
+          value={inputValue}
           placeholder={placeholder}
           disabled={disabled}
           autoComplete="off"
-          onInput={() => {
-            if (error) setError(null);
+          onChange={(e) => {
+            const next = e.target.value;
+            setInputValue(next);
+            handleUserTyping(next);
           }}
-          className={`w-full rounded-lg border py-2 pl-9 pr-3 text-sm outline-none ${
-            error
-              ? "border-destructive focus:border-destructive"
-              : "border-border focus:border-primary"
-          }`}
+          onBlur={() => {
+            if (debounceTimerRef.current) {
+              clearTimeout(debounceTimerRef.current);
+              debounceTimerRef.current = null;
+              void runGeocode(inputValue);
+            }
+          }}
+          className={`w-full rounded-lg border py-2 pl-9 pr-9 text-sm outline-none ${borderClass}`}
         />
+        {inputValue.length > 0 && !disabled && (
+          <button
+            type="button"
+            onClick={handleClear}
+            aria-label="Obriši adresu"
+            className="absolute inset-y-0 right-2 my-auto flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
-      {error && (
+      {syncStatus === "not_found" && (
+        <div className="mt-1.5 flex items-start gap-1.5 text-xs text-amber-700">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>Adresa nije pronađena. Pokušajte detaljnije (ulica + broj + grad).</span>
+        </div>
+      )}
+      {syncStatus === "stale" && lastValidPlace && (
+        <div className="mt-1.5 text-xs text-muted-foreground">
+          Validira se… Poslednje pronađeno: {lastValidPlace.meta.formatted_address || lastValidPlace.address}
+        </div>
+      )}
+      {syncStatus === "error" && (
         <div className="mt-1.5 flex items-start gap-1.5 text-xs text-destructive">
-          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>{error}</span>
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>Greška pri proveri adrese. Pokušajte ponovo.</span>
         </div>
       )}
     </div>
