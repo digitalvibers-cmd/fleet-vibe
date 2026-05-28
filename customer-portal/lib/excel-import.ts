@@ -98,14 +98,14 @@ export function parseOrdersFromExcel(buffer: ArrayBuffer): ParseResult {
         if (!order.pickupCity) errors.push("Grad preuzimanja je obavezan");
         if (!order.dropoffAddress) errors.push("Adresa dostave je obavezna");
         if (!order.dropoffCity) errors.push("Grad dostave je obavezan");
-        if (order.codAmount && !/^\d+(\.\d{1,2})?$/.test(order.codAmount)) {
-            errors.push("Cena otkupa mora biti broj (npr. 1500 ili 1500.50)");
+        if (order.codAmount && !/^\d+$/.test(order.codAmount)) {
+            errors.push("Cena otkupa mora biti ceo broj (npr. 1500)");
         }
         if (
             order.recipientPhone &&
-            !/^[+0]\d[\d\s\-()]{5,}$/.test(order.recipientPhone)
+            order.recipientPhone.replace(/\D/g, "").length < 6
         ) {
-            errors.push("Broj telefona primaoca mora počinjati sa + ili 0");
+            errors.push("Broj telefona primaoca nije validan (mora sadržati najmanje 6 cifara)");
         }
 
         return {
@@ -146,6 +146,6 @@ export const TEMPLATE_EXAMPLES = [
         "Napomene": "",
         "Zakazano (YYYY-MM-DD HH:mm)": "",
         "Cena otkupa (RSD)": "",
-        "Broj telefona primaoca": "",
+        "Broj telefona primaoca": "0641234567",
     },
 ];
