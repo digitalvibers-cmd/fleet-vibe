@@ -33,8 +33,8 @@ export async function GET(request: NextRequest) {
   if (searchParams.get("page")) params.page = searchParams.get("page")!;
   if (searchParams.get("limit")) params.limit = searchParams.get("limit")!;
   if (searchParams.get("sort")) params.sort = searchParams.get("sort")!;
-  if (searchParams.get("after")) params.after = searchParams.get("after")!;
-  if (searchParams.get("before")) params.before = searchParams.get("before")!;
+  if (searchParams.get("created_at")) params.created_at = searchParams.get("created_at")!;
+  if (searchParams.get("status")) params.status = searchParams.get("status")!;
   if (searchParams.get("query")) params.query = searchParams.get("query")!;
 
   const result = await fleetbaseApi("orders", { token, params });

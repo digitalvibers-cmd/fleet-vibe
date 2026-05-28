@@ -10,9 +10,27 @@ import {
   ChevronRight,
   RefreshCw,
   Search,
+  X,
 } from "lucide-react";
 import type { Order } from "@/lib/types";
 import Header from "@/components/Header";
+
+const ARCHIVE_STATUSES = ["completed", "canceled", "order_canceled", "expired"];
+const ACTIVE_STATUSES = [
+  "created",
+  "dispatched",
+  "enroute",
+  "started",
+  "in-progress",
+  "preparing",
+  "assigned",
+  "driver_enroute",
+  "scheduled",
+  "picked_up",
+  "pending",
+];
+
+type StatusFilter = "all" | "active" | "archive";
 
 const STATUS_COLORS: Record<string, string> = {
   created: "bg-blue-100 text-blue-800",
@@ -47,17 +65,53 @@ function formatDate(dateStr: string) {
   });
 }
 
+function formatDateShort(isoDate: string) {
+  const [y, m, d] = isoDate.split("-");
+  return `${d}.${m}.${y}.`;
+}
+
+function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-foreground">
+      {label}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Ukloni filter ${label}`}
+        className="rounded-full p-0.5 text-muted-foreground transition hover:bg-border hover:text-foreground"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </span>
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ sort: "-created_at", limit: "50" });
       if (searchQuery) params.set("query", searchQuery);
+
+      if (dateFrom || dateTo) {
+        const from = dateFrom ? `${dateFrom}T00:00:00` : "1970-01-01T00:00:00";
+        const to = dateTo ? `${dateTo}T23:59:59` : "9999-12-31T23:59:59";
+        params.set("created_at", `${from},${to}`);
+      }
+
+      if (statusFilter === "active") {
+        params.set("status", ACTIVE_STATUSES.join(","));
+      } else if (statusFilter === "archive") {
+        params.set("status", ARCHIVE_STATUSES.join(","));
+      }
 
       const res = await fetch(`/api/orders?${params}`);
       if (res.status === 401) {
@@ -71,7 +125,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, router]);
+  }, [searchQuery, dateFrom, dateTo, statusFilter, router]);
 
   useEffect(() => {
     fetchOrders();
@@ -83,8 +137,40 @@ export default function DashboardPage() {
 
       {/* Main content */}
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
+        {/* Quick filters */}
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              setStatusFilter(statusFilter === "active" ? "all" : "active")
+            }
+            aria-pressed={statusFilter === "active"}
+            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+              statusFilter === "active"
+                ? "border-primary bg-primary text-white"
+                : "border-border bg-white text-foreground hover:bg-muted"
+            }`}
+          >
+            Aktivne dostave
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setStatusFilter(statusFilter === "archive" ? "all" : "archive")
+            }
+            aria-pressed={statusFilter === "archive"}
+            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+              statusFilter === "archive"
+                ? "border-primary bg-primary text-white"
+                : "border-border bg-white text-foreground hover:bg-muted"
+            }`}
+          >
+            Arhiva dostava
+          </button>
+        </div>
+
         {/* Filters */}
-        <div className="mb-6 flex flex-wrap items-end gap-3">
+        <div className="mb-4 flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[200px]">
             <label className="mb-1 block text-xs font-medium text-muted-foreground">
               Pretraži po ID narudžbine
@@ -105,6 +191,30 @@ export default function DashboardPage() {
               />
             </div>
           </div>
+          <div className="min-w-[150px]">
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Od datuma
+            </label>
+            <input
+              type="date"
+              value={dateFrom}
+              max={dateTo || undefined}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-full rounded-xl border border-border py-2 px-3 text-sm outline-none focus:border-primary"
+            />
+          </div>
+          <div className="min-w-[150px]">
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Do datuma
+            </label>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-full rounded-xl border border-border py-2 px-3 text-sm outline-none focus:border-primary"
+            />
+          </div>
           <button
             onClick={fetchOrders}
             className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm text-muted-foreground transition hover:bg-muted"
@@ -112,12 +222,17 @@ export default function DashboardPage() {
             <Search className="h-3.5 w-3.5" />
             Filtriraj
           </button>
-          {searchQuery && (
+          {(searchQuery || dateFrom || dateTo || statusFilter !== "all") && (
             <button
-              onClick={() => setSearchQuery("")}
+              onClick={() => {
+                setSearchQuery("");
+                setDateFrom("");
+                setDateTo("");
+                setStatusFilter("all");
+              }}
               className="text-sm text-primary hover:underline"
             >
-              Obriši
+              Obriši sve filtere
             </button>
           )}
           <button
@@ -128,6 +243,43 @@ export default function DashboardPage() {
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
           </button>
         </div>
+
+        {/* Active filter chips */}
+        {(searchQuery || dateFrom || dateTo || statusFilter !== "all") && (
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">Primenjeni filteri:</span>
+            {statusFilter === "active" && (
+              <FilterChip
+                label="Aktivne dostave"
+                onRemove={() => setStatusFilter("all")}
+              />
+            )}
+            {statusFilter === "archive" && (
+              <FilterChip
+                label="Arhiva dostava"
+                onRemove={() => setStatusFilter("all")}
+              />
+            )}
+            {searchQuery && (
+              <FilterChip
+                label={`ID: ${searchQuery}`}
+                onRemove={() => setSearchQuery("")}
+              />
+            )}
+            {dateFrom && (
+              <FilterChip
+                label={`Od: ${formatDateShort(dateFrom)}`}
+                onRemove={() => setDateFrom("")}
+              />
+            )}
+            {dateTo && (
+              <FilterChip
+                label={`Do: ${formatDateShort(dateTo)}`}
+                onRemove={() => setDateTo("")}
+              />
+            )}
+          </div>
+        )}
 
         {/* Orders list */}
         {loading && orders.length === 0 ? (
