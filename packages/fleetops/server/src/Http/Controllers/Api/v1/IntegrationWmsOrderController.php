@@ -70,7 +70,6 @@ class IntegrationWmsOrderController extends Controller
 
         $payload = new Payload();
         $payload->company_uuid = $companyUuid;
-        $payload->save();
 
         if ($pickup) {
             $payload->setPickup($pickup, [
@@ -82,6 +81,8 @@ class IntegrationWmsOrderController extends Controller
         if ($dropoff) {
             $payload->setDropoff($dropoff);
         }
+
+        $payload->save();
 
         $firstWaypoint = $payload->getPickupOrFirstWaypoint();
         if ($firstWaypoint instanceof Place) {
