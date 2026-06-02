@@ -21,6 +21,26 @@ Route::prefix(config('fleetops.api.routing.prefix', null))->namespace('Fleetbase
         |
         | End-user API routes, these are routes that the SDK and applications will interface with, and require API credentials.
         */
+        /*
+        |--------------------------------------------------------------------------
+        | WMS Integration (3rd-party warehouse client → POST /v1/integrations/wms/orders)
+        |--------------------------------------------------------------------------
+        |
+        | Isolated namespace with a dedicated bearer token. Does NOT share the
+        | `fleetbase.api` middleware, so a leaked token can only create orders —
+        | it cannot list drivers/vehicles/contacts under the rest of /v1/*.
+        */
+        $router->group([
+            'prefix'     => 'v1/integrations/wms',
+            'middleware' => [
+                \Fleetbase\FleetOps\Http\Middleware\AuthenticateWmsIntegration::class,
+                \Fleetbase\FleetOps\Http\Middleware\TransformLocationMiddleware::class,
+            ],
+            'namespace'  => 'Api\v1',
+        ], function ($router) {
+            $router->post('orders', 'IntegrationWmsOrderController@create');
+        });
+
         $router->group(['prefix' => 'v1', 'middleware' => ['fleetbase.api', Fleetbase\FleetOps\Http\Middleware\TransformLocationMiddleware::class], 'namespace' => 'Api\v1'], function ($router) {
             // drivers routes
             $router->group(['prefix' => 'drivers', 'middleware' => []], function () use ($router) {

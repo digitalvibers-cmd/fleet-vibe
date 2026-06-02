@@ -171,4 +171,16 @@ return [
     */
     'versions' => ['2020-09-30', '2024-03-12'],
     'version' => '2024-03-12',
+
+    /*
+    |--------------------------------------------------------------------------
+    | WMS Integration (3rd-party warehouse client)
+    |--------------------------------------------------------------------------
+    | Dedicated bearer token + company UUID for POST /v1/integrations/wms/orders.
+    | Token is compared with hash_equals(). Leave empty to disable the endpoint.
+    */
+    'wms_integration' => [
+        'token'        => env('WMS_INTEGRATION_TOKEN'),
+        'company_uuid' => env('WMS_INTEGRATION_COMPANY_UUID'),
+    ],
 ];
