@@ -12,7 +12,6 @@ use Fleetbase\Http\Controllers\Controller;
 use Fleetbase\Models\CustomField;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -176,9 +175,9 @@ class IntegrationWmsOrderController extends Controller
             return [];
         }
 
-        $fieldsByName = CustomField::where('subject_uuid', $orderConfigUuid)
-            ->get(['uuid', 'name'])
-            ->keyBy('name');
+        $fields       = CustomField::where('subject_uuid', $orderConfigUuid)->get(['uuid', 'name', 'type']);
+        $fieldsByName = $fields->keyBy('name');
+        $fieldsByUuid = $fields->keyBy('uuid');
 
         $normalized = [];
         foreach ($rows as $row) {
@@ -194,10 +193,14 @@ class IntegrationWmsOrderController extends Controller
                 continue;
             }
 
-            $normalized[] = Arr::only(array_merge($row, [
+            $field     = $fieldsByUuid[$uuid] ?? null;
+            $valueType = $row['value_type'] ?? ($field->type ?? 'text');
+
+            $normalized[] = [
                 'custom_field_uuid' => $uuid,
                 'value'             => $row['value'] ?? null,
-            ]), ['custom_field_uuid', 'value', 'value_type']);
+                'value_type'        => $valueType,
+            ];
         }
 
         return $normalized;
