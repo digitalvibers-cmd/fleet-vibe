@@ -60,6 +60,8 @@ services:
       DATABASE_URL: "mysql://root@database/fleetbase"
       GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY}"
       GOOGLE_MAPS_LOCALE: "sr"
+      WMS_INTEGRATION_TOKEN: "${WMS_INTEGRATION_TOKEN:-}"
+      WMS_INTEGRATION_COMPANY_UUID: "${WMS_INTEGRATION_COMPANY_UUID:-}"
       <<: *mail-env
     volumes:
       - ./packages/fleetops/server:/fleetbase/api/vendor/fleetbase/fleetops-api/server
@@ -69,6 +71,8 @@ services:
       DATABASE_URL: "mysql://root@database/fleetbase"
       GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY}"
       GOOGLE_MAPS_LOCALE: "sr"
+      WMS_INTEGRATION_TOKEN: "${WMS_INTEGRATION_TOKEN:-}"
+      WMS_INTEGRATION_COMPANY_UUID: "${WMS_INTEGRATION_COMPANY_UUID:-}"
       <<: *mail-env
     volumes:
       - ./packages/fleetops/server:/fleetbase/api/vendor/fleetbase/fleetops-api/server
@@ -78,6 +82,8 @@ services:
       DATABASE_URL: "mysql://root@database/fleetbase"
       GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY}"
       GOOGLE_MAPS_LOCALE: "sr"
+      WMS_INTEGRATION_TOKEN: "${WMS_INTEGRATION_TOKEN:-}"
+      WMS_INTEGRATION_COMPANY_UUID: "${WMS_INTEGRATION_COMPANY_UUID:-}"
       <<: *mail-env
 
   customer-portal:
