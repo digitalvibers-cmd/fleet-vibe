@@ -23,7 +23,7 @@ services:
       MYSQL_ROOT_PASSWORD: "${DB_PASSWORD}"
       MYSQL_DATABASE: "fleetbase"
     ports:
-      - "33061:3306"
+      - "127.0.0.1:33061:3306"
     volumes:
       - "fleetvibe-prod-mysql:/var/lib/mysql"
 
