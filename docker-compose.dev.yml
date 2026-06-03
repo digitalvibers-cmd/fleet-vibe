@@ -21,10 +21,10 @@ services:
   database:
     command: "--lower-case-table-names=2"
     environment:
-      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_ROOT_PASSWORD: "${DB_PASSWORD}"
       MYSQL_DATABASE: "fleetbase"
     ports:
-      - "33060:3306"
+      - "127.0.0.1:33060:3306"
     volumes:
       - "./docker/database/mysql:/var/lib/mysql"
 
@@ -57,7 +57,7 @@ services:
       ENVIRONMENT: "development"
       APP_DEBUG: "true"
       API_CACHE_ENABLED: "false"
-      DATABASE_URL: "mysql://root@database/fleetbase"
+      DATABASE_URL: "mysql://root:${DB_PASSWORD}@database/fleetbase"
       GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY}"
       GOOGLE_MAPS_LOCALE: "sr"
       WMS_INTEGRATION_TOKEN: "${WMS_INTEGRATION_TOKEN:-}"
@@ -68,7 +68,7 @@ services:
 
   queue:
     environment:
-      DATABASE_URL: "mysql://root@database/fleetbase"
+      DATABASE_URL: "mysql://root:${DB_PASSWORD}@database/fleetbase"
       GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY}"
       GOOGLE_MAPS_LOCALE: "sr"
       WMS_INTEGRATION_TOKEN: "${WMS_INTEGRATION_TOKEN:-}"
@@ -79,7 +79,7 @@ services:
 
   scheduler:
     environment:
-      DATABASE_URL: "mysql://root@database/fleetbase"
+      DATABASE_URL: "mysql://root:${DB_PASSWORD}@database/fleetbase"
       GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY}"
       GOOGLE_MAPS_LOCALE: "sr"
       WMS_INTEGRATION_TOKEN: "${WMS_INTEGRATION_TOKEN:-}"
