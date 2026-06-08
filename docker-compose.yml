@@ -82,6 +82,7 @@ services:
     build:
       context: .
       dockerfile: console/Dockerfile.dev
+    restart: unless-stopped
 
   application:
     image: fleetbase/fleetbase-api:latest
@@ -108,6 +109,7 @@ services:
   customer-portal:
     build:
       context: ./customer-portal
+    restart: unless-stopped
     depends_on:
       - httpd
 
@@ -115,6 +117,7 @@ services:
     build:
       context: .
       dockerfile: docker/httpd/Dockerfile
+    restart: unless-stopped
     volumes:
       - storage-uploads:/fleetbase/api/storage/app/public:ro
     depends_on:
