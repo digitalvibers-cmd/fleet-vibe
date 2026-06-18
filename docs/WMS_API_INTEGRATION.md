@@ -27,6 +27,8 @@ Content-Type: application/json
 Accept: application/json
 ```
 
+> **Important — the token is case-sensitive.** It is a 64-character lowercase hex string (`0-9a-f` only). Copy/paste it exactly as we sent it. `E6858e...` and `e6858e...` are different tokens to our server, even though hex digits look interchangeable. Store it in an env var or secrets manager rather than typing it by hand.
+
 Failure modes:
 
 | Status | Meaning |
