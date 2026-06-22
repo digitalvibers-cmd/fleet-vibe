@@ -134,6 +134,18 @@ Custom fields ("cena-otkupa", "broj-primaoca") definišu se po `OrderConfig`-u �
 
 Orphaned CFV-i (kada novi config nema polje sa istim `name`) ostaju u bazi nepromenjeni — vraćaju se ako se tip vrati na config gde poklapanje postoji. Nema masovne migracije postojećih porudžbina; re-link se dešava pri sledećem type change-u na svakoj porudžbini.
 
+### LogiVibe core fleetops modifikacije (QR scan self-assign za FlyBox Driver app)
+
+Mobilna aplikacija za vozače (`flybox-driver-app`, zaseban repo na `~/Projects/flybox-driver-app/`) skenira QR kod sa paketa da bi se vozač sam dodelio na porudžbinu. App gађa **PUBLIC `/v1/`** API sa driver Sanctum tokenom (`@fleetbase/sdk` default namespace je `v1`), pa endpointi žive u `Api\v1\OrderController`-u (NE Internal). Pri upstream fleetops sync-u re-aplicirati ručno (`git log -- packages/fleetops/`):
+
+- `server/src/Http/Controllers/Api/v1/OrderController.php` (novo) — tri metode:
+  - `resolveScannedOrder(?string $code): ?Order` (private) — Fleetbase QR/barcode kodira **owner UUID** (`DNS2D::getBarcodePNG($owner_uuid, 'QRCODE')`), NE `tracking_number` string. Skener vraća goli UUID. Resolve: prvo `Order::where('uuid', $code)`; ako nema, `Entity::where('uuid', $code)` → parent order preko `payload_uuid`. Sve `withoutGlobalScopes()` da cross-company vrati 403 (a ne 404); caller eksplicitno proverava `company_uuid`.
+  - `scanResolve(Request)` → `POST /v1/orders/scan-resolve` `{ code }` — preview, **bez mutacije**. Vraća `OrderResource` (pickup/dropoff/custom fields preko `withCustomFields()`) + `meta: { already_assigned, assigned_to_current_driver }`. 404 ako ne postoji, 403 druga firma.
+  - `scanAssign(Request)` → `POST /v1/orders/scan-assign` `{ code }` — dodeljuje + dispečuje. Trenutni vozač se rezolvuje iz **autentifikovanog usera** (`Driver::where('user_uuid', $request->user()->uuid)`), nikad iz client input-a. `DB::transaction` + `lockForUpdate()` (race-safe protiv dvostrukog claim-a): 409 ako je dodeljen DRUGOM vozaču (idempotentno ako je isti), inače `$order->assignDriver($driver)` pa `$order->firstDispatchWithActivity()`. **Dispatch je obavezan** — Orders lista u app-u filtrira `created` status, pa puko `driver_assigned_uuid` ne bi prikazalo porudžbinu. Postavlja `session('company')` iz ordera pre assign-a (driver token ne mora imati session company; `notifyDriverAssigned` ga čita).
+- `server/src/routes.php` — dve rute u `/v1/orders` grupi, PRE `{id}` ruta: `scan-resolve`, `scan-assign`.
+
+**Nema** izmene Order Configuration-a, nema novog `picked_up` activity tipa — assign + dispatch je dovoljan signal. Frontend (screens, navigacija) je u `flybox-driver-app` repou, ne ovde.
+
 ### LogiVibe console (`console/app/`) overrides — RSD valuta
 
 Sledeći fajlovi NISU u submodulima — žive u `console/app/` i traju kroz sve upstream sync-ove. Postoje zbog upstream Fleetbase bug-a: GeoIP whois (`/int/v1/lookup/whois`) vraća `currency_code: "RSD"` (flat), ali `MoneyInput.js` i `CurrencySelect.js` čitaju `whois.currency.code` (nested) — schemas ne match-uju, pa svi money inputi padaju na hardkodovan `'USD'` fallback uprkos `companies.currency = 'RSD'`.
