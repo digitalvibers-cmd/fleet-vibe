@@ -97,6 +97,9 @@ Route::prefix(config('fleetops.api.routing.prefix', null))->namespace('Fleetbase
             $router->group(['prefix' => 'orders', 'middleware' => []], function () use ($router) {
                 $router->post('/', 'OrderController@create');
                 $router->get('/', 'OrderController@query');
+                // FlyBox QR self-assign (driver app): resolve a scanned package QR (uuid) and self-assign it.
+                $router->post('scan-resolve', 'OrderController@scanResolve');
+                $router->post('scan-assign', 'OrderController@scanAssign');
                 $router->get('{id}', 'OrderController@find');
                 $router->get('{id}/distance-and-time', 'OrderController@getDistanceMatrix');
                 $router->match(['post', 'patch'], '{id}/schedule', 'OrderController@scheduleOrder');
