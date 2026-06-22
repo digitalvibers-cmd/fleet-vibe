@@ -36,7 +36,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -1082,33 +1081,32 @@ class OrderController extends Controller
             return response()->json(['error' => 'Package belongs to another company.'], 403);
         }
 
-        $result = DB::transaction(function () use ($resolved, $driver) {
-            /** @var Order $order */
-            $order = Order::where('uuid', $resolved->uuid)->lockForUpdate()->first();
-
-            // Already claimed by a different driver -> conflict.
-            if ($order->driver_assigned_uuid && $order->driver_assigned_uuid !== $driver->uuid) {
-                return ['conflict' => true];
-            }
-
-            // Assign (idempotent when already the current driver), then dispatch so it leaves "created".
-            // Silent assignment: the driver self-assigned, so the "driver assigned" notification is
-            // redundant — and skipping it avoids a synchronous notify call inside the transaction.
-            if ($order->driver_assigned_uuid !== $driver->uuid) {
-                $order->assignDriver($driver, true);
-            }
-
-            $order->firstDispatchWithActivity();
-
-            return ['order' => $order];
-        });
-
-        if (!empty($result['conflict'])) {
+        // Already taken by a different driver.
+        if ($resolved->driver_assigned_uuid && $resolved->driver_assigned_uuid !== $driver->uuid) {
             return response()->json(['error' => 'Package already assigned to another driver.'], 409);
         }
 
-        /** @var Order $order */
-        $order = $result['order'];
+        // Atomic claim when unassigned: a single conditional UPDATE is race-safe on its own, so two
+        // drivers scanning at once cannot both win. We deliberately avoid wrapping this in an explicit
+        // DB::transaction — the dispatch/activity flow below fires afterCommit events and does its own
+        // DB work, which breaks under Octane with "There is no active transaction" when nested in one.
+        if (empty($resolved->driver_assigned_uuid)) {
+            $claimed = Order::withoutGlobalScopes()
+                ->where('uuid', $resolved->uuid)
+                ->whereNull('driver_assigned_uuid')
+                ->update(['driver_assigned_uuid' => $driver->uuid, 'updated_at' => now()]);
+
+            // Lost the race to another driver between the check and the claim.
+            if ($claimed === 0) {
+                return response()->json(['error' => 'Package already assigned to another driver.'], 409);
+            }
+        }
+
+        // Dispatch so the order leaves "created" and appears in the driver's list (idempotent if
+        // already dispatched). Done outside a transaction, mirroring OrderController@dispatchOrder.
+        $order = $resolved->fresh();
+        $order->firstDispatchWithActivity();
+
         $order->load($this->scannedOrderRelations());
 
         return new OrderResource($order);
