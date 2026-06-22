@@ -1024,19 +1024,19 @@ class OrderController extends Controller
      */
     public function scanResolve(Request $request)
     {
-        $code = $request->input('code');
-        $user = $request->user();
-
-        if (!$user) {
+        // On /v1 token-authenticated routes the company/user are exposed via the session
+        // (set by the fleetbase.api middleware), NOT via $request->user() — which is null here.
+        $companyUuid = session('company');
+        if (empty($companyUuid)) {
             return response()->json(['error' => 'Driver authentication required.'], 403);
         }
 
-        $order = $this->resolveScannedOrder($code);
+        $order = $this->resolveScannedOrder($request->input('code'));
         if (!$order) {
             return response()->json(['error' => 'Package not found.'], 404);
         }
 
-        if ($order->company_uuid !== $user->company_uuid) {
+        if ($order->company_uuid !== $companyUuid) {
             return response()->json(['error' => 'Package belongs to another company.'], 403);
         }
 
@@ -1060,31 +1060,26 @@ class OrderController extends Controller
      */
     public function scanAssign(Request $request)
     {
-        $code = $request->input('code');
-        $user = $request->user();
-
-        if (!$user) {
+        // Company/user come from the session (set by the fleetbase.api middleware for token auth);
+        // $request->user() is null on these /v1 routes.
+        $companyUuid = session('company');
+        if (empty($companyUuid)) {
             return response()->json(['error' => 'Driver authentication required.'], 403);
         }
 
-        // Resolve the current driver from the authenticated user — never trust a client-supplied driver id.
-        $driver = Driver::where('user_uuid', $user->uuid)->where('company_uuid', $user->company_uuid)->withoutGlobalScopes()->first();
+        // Resolve the current driver from the authenticated session — never trust a client-supplied id.
+        $driver = Driver::where('user_uuid', session('user'))->where('company_uuid', $companyUuid)->withoutGlobalScopes()->first();
         if (!$driver) {
             return response()->json(['error' => 'No driver profile found for the current user.'], 403);
         }
 
-        $resolved = $this->resolveScannedOrder($code);
+        $resolved = $this->resolveScannedOrder($request->input('code'));
         if (!$resolved) {
             return response()->json(['error' => 'Package not found.'], 404);
         }
 
-        if ($resolved->company_uuid !== $user->company_uuid) {
+        if ($resolved->company_uuid !== $companyUuid) {
             return response()->json(['error' => 'Package belongs to another company.'], 403);
-        }
-
-        // Driver tokens may not populate session('company'); the driver-assigned notification needs it.
-        if ($resolved->company_uuid && session()->missing('company')) {
-            session(['company' => $resolved->company_uuid]);
         }
 
         $result = DB::transaction(function () use ($resolved, $driver) {
