@@ -355,6 +355,7 @@ contact:
     upload-new-photo: Upload New Photo
 
 customer:
+  reset-password: Reset Password
   fields:
     customer-details: Customer Details
     select-address: Select Address
