@@ -6,9 +6,6 @@ export default class ModalsResetCustomerCredentialsComponent extends Component {
     @service fetch;
     @service notifications;
     @tracked options = {};
-    @tracked password;
-    @tracked confirmPassword;
-    @tracked sendCredentials = true;
     @tracked customer;
 
     constructor(owner, { options }) {
@@ -26,11 +23,11 @@ export default class ModalsResetCustomerCredentialsComponent extends Component {
             modal.startLoading();
 
             try {
+                // LogiVibe: no password fields — the API auto-generates a new password
+                // and emails it to the customer (customer-portal credentials only).
                 await this.fetch.post('customers/reset-credentials', {
                     customer: this.customer.id,
-                    password: this.password,
-                    password_confirmation: this.confirmPassword,
-                    send_credentials: this.sendCredentials,
+                    send_credentials: true,
                 });
 
                 this.notifications.success('Customer password reset.');

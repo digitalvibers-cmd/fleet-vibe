@@ -146,6 +146,22 @@ Mobilna aplikacija za vozače (`flybox-driver-app`, zaseban repo na `~/Projects/
 
 **Nema** izmene Order Configuration-a, nema novog `picked_up` activity tipa — assign + dispatch je dovoljan signal. Frontend (screens, navigacija) je u `flybox-driver-app` repou, ne ovde.
 
+### LogiVibe core fleetops modifikacije (Customer portal password reset iz konzole)
+
+Operateri sa `iam create user` permisijom mogu iz konzole (Management → Contacts → Customers) da resetuju lozinku customera za **korisnički portal**. Backend generiše novu lozinku (`Str::random(12)`), poništi sve Sanctum tokene (stara portal sesija pada) i pošalje customeru `CustomerCredentialsMail` — **isti mejl kao pri kreiranju naloga, isključivo za portal**. Cela feature živi u `packages/fleetops/` (embedded) i pri upstream sync-u se re-aplicira ručno (`git log -- packages/fleetops/`):
+
+- `server/src/Http/Controllers/Internal/v1/CustomerController.php` — `resetCredentials`: (a) backend permission guard `auth()->user()?->cannot('iam create user')` → 403 (UI gate nije jedina odbrana); (b) ako `password` nije prosleđen, auto-generiše `Str::random(12)` i forsira slanje mejla; (c) radi **samo nad postojećim** portal userom — `createUser()` fallback je uklonjen da flow nikad ne uđe u putanju kreiranja naloga / `assignCompany()`.
+- `server/src/Http/Controllers/Api/…` nema izmene; ruta `POST customers/reset-credentials` već postoji u `server/src/routes.php` (internal `customers` grupa).
+- `server/src/Mail/CustomerCredentialsMail.php` + `server/resources/views/mail/customer-credentials.blade.php` — postojeći portal mejl (srpski, `https://flybox.rs`), reuse-ovan.
+- `server/src/Support/CustomerAccessRevoker.php` — poništava tokene (postojeći).
+- `addon/components/modals/reset-customer-credentials.{js,hbs}` — pojednostavljeni na **potvrdu bez polja za lozinku** (uklonjena password/confirm/checkbox polja); `confirm` šalje samo `{ customer, send_credentials: true }`. Re-export u `app/components/modals/reset-customer-credentials.js` (bez izmene).
+- `addon/services/customer-actions.js` — nova metoda `resetCredentials(customer)` koja otvara modal sa `onPasswordResetComplete: this.refresh`.
+- `addon/controllers/management/contacts/customers.js` — dropdown akcija „Reset Password“ gated `permission: 'iam create user'`.
+- `addon/controllers/management/contacts/customers/details.js` — `actionButtons` pretvoren u getter; dodato „Reset Password“ dugme gated `permission: 'iam create user'` (injektovan `customerActions` + `intl` servis).
+- `translations/en-us.yaml` — ključ `customer.reset-password: "Reset Password"` (ostali locale-i fallback-uju na en-us).
+
+**Distinkcija (bitno):** customer-ov `User` ima `type = 'customer'`; console-invite (`UserInvited`) je za takve usere suprimovan preko `Notification::sending` listenera u `server/src/Providers/FleetOpsServiceProvider.php` (~L116-123). Zato reset (i kreiranje naloga) šalju **isključivo** `CustomerCredentialsMail`, nikad console mejl. NB: komentar u `server/src/Models/Contact.php` (~L356) pogrešno upućuje na `AppServiceProvider` — stvarni listener je u `FleetOpsServiceProvider`.
+
 ### LogiVibe console (`console/app/`) overrides — RSD valuta
 
 Sledeći fajlovi NISU u submodulima — žive u `console/app/` i traju kroz sve upstream sync-ove. Postoje zbog upstream Fleetbase bug-a: GeoIP whois (`/int/v1/lookup/whois`) vraća `currency_code: "RSD"` (flat), ali `MoneyInput.js` i `CurrencySelect.js` čitaju `whois.currency.code` (nested) — schemas ne match-uju, pa svi money inputi padaju na hardkodovan `'USD'` fallback uprkos `companies.currency = 'RSD'`.
@@ -274,6 +290,9 @@ The deploy scripts on each server (`/usr/local/bin/fleetvibe-deploy-{dev,prod,po
 - **Reverse Proxy**: Nginx with Let's Encrypt SSL
 - **Backups**: Hetzner Automated Backups + MySQL dump cron (every 6h)
 - **Monitoring**: Sentry (error tracking) + UptimeRobot (uptime) + Hetzner alerts
+
+### FlyBox Driver APK hosting (host nginx, ne httpd kontejner)
+Driver app (`flybox-driver-app` repo) se distribuira kao APK self-hostovan na ovom serveru. Host nginx vhost `fleetvibe-console` (`/etc/nginx/sites-available/fleetvibe-console`) ima `location /app/ { alias /opt/fleetvibe-apk/; … application/vnd.android.package-archive … }`. `/opt/fleetvibe-apk/` je vlasništvo `deploy` usera; driver-app GitHub Actions workflow `scp`-uje potpisan APK tamo. Link za vozače (DEV build): **https://fleetvibe.digitalvibe.rs/app/flybox-driver.apk**. CI deploy ključ (`APK_DEPLOY_SSH_KEY` secret u driver-app repou) je u `deploy` `authorized_keys`. Detalji: `flybox-driver-app/CLAUDE.md` → "CI/CD & Distribution".
 
 ## Customer Portal
 

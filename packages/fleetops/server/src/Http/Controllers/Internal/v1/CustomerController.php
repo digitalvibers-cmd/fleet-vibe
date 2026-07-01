@@ -9,6 +9,7 @@ use Fleetbase\Http\Controllers\Controller;
 use Fleetbase\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class CustomerController extends Controller
 {
@@ -60,6 +61,14 @@ class CustomerController extends Controller
      */
     public function resetCredentials(Request $request)
     {
+        // LogiVibe: only operators with the IAM "create user" permission may reset
+        // customer portal credentials. The console UI gates this too, but the API
+        // must not trust the frontend alone.
+        $actor = $request->user() ?? (session('user') ? User::find(session('user')) : null);
+        if ($actor && $actor->cannot('iam create user')) {
+            return response()->error('You are not authorized to reset customer credentials.', 403);
+        }
+
         $customerId      = $request->input('customer');
         $password        = $request->input('password');
         $confirmPassword = $request->input('password_confirmation');
@@ -69,7 +78,14 @@ class CustomerController extends Controller
             return response()->error('No customer specified to change password for.');
         }
 
-        if ($password !== $confirmPassword) {
+        // LogiVibe: when no password is supplied the console asks us to auto-generate
+        // one (matching the account-creation flow in CustomerContactObserver) and email
+        // it to the customer — otherwise the operator would never see the new password.
+        $autoGenerate = empty($password);
+        if ($autoGenerate) {
+            $password        = Str::random(12);
+            $sendCredentials = true;
+        } elseif ($password !== $confirmPassword) {
             return response()->error('Passwords do not match.');
         }
 
@@ -78,10 +94,12 @@ class CustomerController extends Controller
             return response()->error('Customer not found to change password for.');
         }
 
-        // Load customer user
-        $user = $customer->user_uuid ? User::where('uuid', $customer->user_uuid)->first() : $customer->createUser();
+        // LogiVibe: reset operates only on an existing portal account; we never call
+        // createUser() here so this flow can never enter the account-creation /
+        // assignCompany() path (which would otherwise dispatch a console UserInvited).
+        $user = $customer->user_uuid ? User::where('uuid', $customer->user_uuid)->first() : null;
         if (!$user) {
-            return response()->error('Unable to reset customer credentials');
+            return response()->error('Customer has no portal account to reset.');
         }
 
         // Change password
