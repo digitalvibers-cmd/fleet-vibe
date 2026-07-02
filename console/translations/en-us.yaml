@@ -58,6 +58,8 @@ common:
   bulk-cancel: Bulk Cancel
   bulk-cancel-resource: Bulk Cancel {resource}
   bulk-actions: Bulk Actions
+  bulk-print-labels: Bulk Print Labels
+  no-resource-selected: No {resource} selected
   column: Column
   row: Row
   table: Table
