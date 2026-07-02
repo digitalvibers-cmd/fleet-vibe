@@ -2,6 +2,7 @@
 
 namespace Fleetbase\FleetOps\Http\Controllers\Internal\v1;
 
+use Barryvdh\DomPDF\Facade\Pdf;
 use Fleetbase\Exceptions\FleetbaseRequestValidationException;
 use Fleetbase\FleetOps\Events\OrderDispatchFailed;
 use Fleetbase\FleetOps\Events\OrderReady;
@@ -1056,6 +1057,62 @@ class OrderController extends FleetOpsController
         }
 
         return response()->error('Unable to render label.');
+    }
+
+    /**
+     * Renders a single PDF containing the labels for multiple orders, laid out in a grid
+     * so that up to 8 labels fit on one A4 sheet (for cutting on adhesive paper).
+     *
+     * Accepts a list of order public_ids or uuids via the `ids` body parameter.
+     *
+     * @return \Illuminate\Http\Response|\Symfony\Component\HttpFoundation\StreamedResponse
+     */
+    public function bulkLabel(Request $request)
+    {
+        $format = $request->input('format', 'stream');
+        $ids    = $request->array('ids');
+
+        if (empty($ids)) {
+            return response()->error('No orders provided to render labels.');
+        }
+
+        $orders = Order::whereIn('public_id', $ids)
+            ->orWhereIn('uuid', $ids)
+            ->withoutGlobalScopes()
+            ->with(['trackingNumber', 'company', 'payload.pickup', 'payload.dropoff', 'payload.entities'])
+            ->get();
+
+        if ($orders->isEmpty()) {
+            return response()->error('Unable to render labels.');
+        }
+
+        // Preserve the selection order the client sent.
+        $orders = $orders->sortBy(function ($order) use ($ids) {
+            $index = array_search($order->public_id, $ids);
+            if ($index === false) {
+                $index = array_search($order->uuid, $ids);
+            }
+
+            return $index === false ? PHP_INT_MAX : $index;
+        })->values();
+
+        $html = view('fleetops::labels/bulk', ['orders' => $orders])->render();
+        $pdf  = Pdf::loadHTML($html)->setPaper('a4');
+
+        switch ($format) {
+            case 'text':
+                return response()->make($pdf->output());
+
+            case 'base64':
+                $base64 = base64_encode($pdf->output());
+
+                return response()->json(['data' => mb_convert_encoding($base64, 'UTF-8', 'UTF-8')]);
+
+            case 'pdf':
+            case 'stream':
+            default:
+                return $pdf->stream();
+        }
     }
 
     /**

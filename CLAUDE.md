@@ -162,6 +162,17 @@ Operateri sa `iam create user` permisijom mogu iz konzole (Management → Contac
 
 **Distinkcija (bitno):** customer-ov `User` ima `type = 'customer'`; console-invite (`UserInvited`) je za takve usere suprimovan preko `Notification::sending` listenera u `server/src/Providers/FleetOpsServiceProvider.php` (~L116-123). Zato reset (i kreiranje naloga) šalju **isključivo** `CustomerCredentialsMail`, nikad console mejl. NB: komentar u `server/src/Models/Contact.php` (~L356) pogrešno upućuje na `AppServiceProvider` — stvarni listener je u `FleetOpsServiceProvider`.
 
+### LogiVibe core fleetops modifikacije (Bulk print opremnica / order labels)
+
+Operater na table layout-u porudžbina može da čekira više porudžbina i kroz bulk-action dugme pokrene **Bulk Print** — jedan preview PDF sa svim otpremnicama u mreži (2 kolone × 4 reda = do 8 po A4 strani, svaka u okviru radi sečenja na samolepljivom papiru). Svaka otpremnica: ID porudžbine, QR kod, tracking number, pickup, drop-off, entiteti. Reuse-uje postojeći `modals/order-label` modal (samo embeduje PDF) i DomPDF infrastrukturu single-label feature-a. Izmenjeni/novi fajlovi:
+
+- `server/src/routes.php` — `$router->post('bulk-label', $controller('bulkLabel'));` u `orders` grupi (pored `label/{id}`).
+- `server/src/Http/Controllers/Internal/v1/OrderController.php` — nova `bulkLabel(Request $request)` metoda + `use Barryvdh\DomPDF\Facade\Pdf;`. Prima `ids` (public_id ili uuid), učitava porudžbine `withoutGlobalScopes`, sortira po redosledu selekcije, renderuje `fleetops::labels/bulk` view kroz DomPDF (`setPaper('a4')`). `format` = `stream`/`base64`/`text`/`pdf` (isti obrazac kao `label()`).
+- `server/resources/views/labels/bulk.php` (novi) — grid view; `$orders->chunk(8)` po strani, `page-break-after` između strana; table-based layout (DomPDF ne podržava flexbox), svaka `td.label-cell` ima `border: 1px solid #414141`.
+- `addon/controllers/operations/orders/index.js` — nov unos u `get bulkActions()` (`icon: 'print'`, `fn: this.orderActions.bulkPrint`).
+- `addon/services/order-actions.js` — nova `@action async bulkPrint(selected = [])`; merge selekcije sa `tableContext.getSelectedRows()`, POST `orders/bulk-label?format=base64` sa `{ ids }`, isti `FileReader` → `modalsManager.setOption('data', ...)` flow kao `viewLabel`.
+- `translations/en-us.yaml` — `common.bulk-print-labels` i `common.no-resource-selected` ključevi.
+
 ### LogiVibe console (`console/app/`) overrides — RSD valuta
 
 Sledeći fajlovi NISU u submodulima — žive u `console/app/` i traju kroz sve upstream sync-ove. Postoje zbog upstream Fleetbase bug-a: GeoIP whois (`/int/v1/lookup/whois`) vraća `currency_code: "RSD"` (flat), ali `MoneyInput.js` i `CurrencySelect.js` čitaju `whois.currency.code` (nested) — schemas ne match-uju, pa svi money inputi padaju na hardkodovan `'USD'` fallback uprkos `companies.currency = 'RSD'`.

@@ -494,6 +494,43 @@ export default class OrderActionsService extends ResourceActionService {
         });
     }
 
+    @action async bulkPrint(selected = []) {
+        selected = [...(isArray(selected) ? selected : []), ...this.tableContext.getSelectedRows()];
+
+        if (!selected || selected.length === 0) {
+            return this.notifications.warning(this.intl.t('common.no-resource-selected', { resource: this.intl.t('resource.orders') }));
+        }
+
+        const ids = selected.map((order) => order.public_id).filter(Boolean);
+
+        // render dialog to display the combined label sheet within
+        this.modalsManager.show(`modals/order-label`, {
+            title: this.intl.t('common.bulk-print-labels'),
+            modalClass: 'modal-xl',
+            acceptButtonText: this.intl.t('common.done'),
+            hideDeclineButton: true,
+        });
+
+        try {
+            // load the merged pdf label sheet from base64
+            // eslint-disable-next-line no-undef
+            const fileReader = new FileReader();
+            const { data: pdfStream } = await this.fetch.post('orders/bulk-label?format=base64', { ids });
+            // eslint-disable-next-line no-undef
+            const base64 = await fetch(`data:application/pdf;base64,${pdfStream}`);
+            const blob = await base64.blob();
+            // load into file reader
+            fileReader.onload = (event) => {
+                const data = event.target.result;
+                this.modalsManager.setOption('data', data);
+            };
+            fileReader.readAsDataURL(blob);
+        } catch (err) {
+            this.notifications.error(this.intl.t('order.prompts.failed-to-load-order-label'));
+            debug('Error loading bulk order label data: ' + err.message);
+        }
+    }
+
     @action async viewLabel(order) {
         // render dialog to display label within
         this.modalsManager.show(`modals/order-label`, {
