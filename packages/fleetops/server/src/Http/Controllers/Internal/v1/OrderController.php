@@ -35,6 +35,7 @@ use Fleetbase\FleetOps\Models\Waypoint;
 use Fleetbase\FleetOps\Support\Utils;
 use Fleetbase\Http\Requests\ExportRequest;
 use Fleetbase\Http\Requests\Internal\BulkActionRequest;
+use Fleetbase\Models\CustomFieldValue;
 use Fleetbase\Models\File;
 use Fleetbase\Models\Type;
 use Fleetbase\Support\TemplateString;
@@ -1079,7 +1080,7 @@ class OrderController extends FleetOpsController
         $orders = Order::whereIn('public_id', $ids)
             ->orWhereIn('uuid', $ids)
             ->withoutGlobalScopes()
-            ->with(['trackingNumber', 'company', 'payload.pickup', 'payload.dropoff', 'payload.entities'])
+            ->with(['trackingNumber', 'company', 'customer', 'payload.pickup', 'payload.dropoff', 'payload.entities'])
             ->get();
 
         if ($orders->isEmpty()) {
@@ -1096,7 +1097,15 @@ class OrderController extends FleetOpsController
             return $index === false ? PHP_INT_MAX : $index;
         })->values();
 
-        $html = view('fleetops::labels/bulk', ['orders' => $orders])->render();
+        // Load custom field values (e.g. "cena-otkupa", "broj-primaoca") for all orders in one query,
+        // grouped by order uuid. Matches the direct-query pattern used by CustomFieldRelinker since
+        // Fleetbase stores the CustomFieldValue subject_type inconsistently across packages.
+        $customFieldsByOrder = CustomFieldValue::whereIn('subject_uuid', $orders->pluck('uuid')->all())
+            ->with('customField')
+            ->get()
+            ->groupBy('subject_uuid');
+
+        $html = view('fleetops::labels/bulk', ['orders' => $orders, 'customFieldsByOrder' => $customFieldsByOrder])->render();
         $pdf  = Pdf::loadHTML($html)->setPaper('a4');
 
         switch ($format) {

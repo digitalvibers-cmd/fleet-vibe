@@ -78,6 +78,27 @@ use Fleetbase\Support\Utils; ?>
 		font-size: 9px;
 		color: #333;
 	}
+
+	.label-customer {
+		font-size: 10px;
+		font-weight: 600;
+		color: #000;
+	}
+
+	.label-info {
+		margin-top: 4px;
+		font-size: 10px;
+	}
+
+	.label-info .info-item {
+		display: block;
+	}
+
+	.label-date {
+		margin-top: 4px;
+		font-size: 9px;
+		color: #555;
+	}
 </style>
 
 <body>
@@ -86,6 +107,31 @@ use Fleetbase\Support\Utils; ?>
 	$columns = 2;
 	$chunks  = $orders->chunk($perPage);
 	$lastChunkIndex = $chunks->count() - 1;
+	$customFieldsByOrder = $customFieldsByOrder ?? collect();
+
+	// Pull the "cena-otkupa" (COD) and "broj-primaoca" (recipient phone) custom fields for an order.
+	// Values are stored as plain strings and displayed as-is, matching the customer portal.
+	$extractCustomFields = function ($order) use ($customFieldsByOrder) {
+		$result = ['cod' => null, 'recipient_phone' => null];
+		$cfvs   = $customFieldsByOrder->get($order->uuid);
+		if (!$cfvs) {
+			return $result;
+		}
+		foreach ($cfvs as $cfv) {
+			$name  = data_get($cfv, 'customField.name');
+			$value = trim((string) $cfv->value);
+			if ($value === '') {
+				continue;
+			}
+			if ($name === 'cena-otkupa') {
+				$result['cod'] = $value;
+			} elseif ($name === 'broj-primaoca') {
+				$result['recipient_phone'] = $value;
+			}
+		}
+
+		return $result;
+	};
 
 	$renderAddress = function ($place) {
 		if (!$place) {
@@ -129,6 +175,12 @@ use Fleetbase\Support\Utils; ?>
 						$pickup   = $order->payload ? $order->payload->pickup : null;
 						$dropoff  = $order->payload ? $order->payload->dropoff : null;
 						$entities = $order->payload ? ($order->payload['entities'] ?? []) : [];
+
+						$customerName  = data_get($order, 'customer.name');
+						$customFields  = $extractCustomFields($order);
+						$cod           = $customFields['cod'];
+						$recipientPhone = $customFields['recipient_phone'];
+						$createdAt     = $order->created_at ? $order->created_at->format('d.m.Y H:i') : null;
 						?>
 						<td class="label-cell">
 							<table style="width: 100%; border-collapse: collapse;">
@@ -143,6 +195,9 @@ use Fleetbase\Support\Utils; ?>
 											<div class="label-id"><?= htmlspecialchars((string) $order->public_id) ?></div>
 											<?php if (Utils::notEmpty($trackingNumber)) { ?>
 												<div class="label-tracking"><?= htmlspecialchars((string) $trackingNumber->tracking_number) ?></div>
+											<?php } ?>
+											<?php if (!empty($customerName)) { ?>
+												<div class="label-customer"><?= htmlspecialchars((string) $customerName) ?></div>
 											<?php } ?>
 										</div>
 									</td>
@@ -172,6 +227,21 @@ use Fleetbase\Support\Utils; ?>
 										<div><?= htmlspecialchars($entityName . ($internalId ? ' - ' . $internalId : '')) ?></div>
 									<?php } ?>
 								</div>
+							<?php } ?>
+
+							<?php if (!empty($cod) || !empty($recipientPhone)) { ?>
+								<div class="label-info">
+									<?php if (!empty($cod)) { ?>
+										<span class="info-item"><strong>Otkup:</strong> <?= htmlspecialchars((string) $cod) ?> RSD</span>
+									<?php } ?>
+									<?php if (!empty($recipientPhone)) { ?>
+										<span class="info-item"><strong>Primalac:</strong> <?= htmlspecialchars((string) $recipientPhone) ?></span>
+									<?php } ?>
+								</div>
+							<?php } ?>
+
+							<?php if (!empty($createdAt)) { ?>
+								<div class="label-date"><?= htmlspecialchars((string) $createdAt) ?></div>
 							<?php } ?>
 						</td>
 					<?php } ?>
