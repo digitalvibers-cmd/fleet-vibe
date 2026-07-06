@@ -350,6 +350,9 @@ common:
   continue-without-saving-prompt: You have unsaved changes to this {resource}. Continuing will discard them. Click Continue to proceed.
   changelog: Changelog
 
+customer:
+  reset-password: Reset Password
+
 resource:
   alert: Alert
   alerts: Alerts

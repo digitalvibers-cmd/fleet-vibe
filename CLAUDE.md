@@ -158,7 +158,7 @@ Operateri sa `iam create user` permisijom mogu iz konzole (Management → Contac
 - `addon/services/customer-actions.js` — nova metoda `resetCredentials(customer)` koja otvara modal sa `onPasswordResetComplete: this.refresh`.
 - `addon/controllers/management/contacts/customers.js` — dropdown akcija „Reset Password“ gated `permission: 'iam create user'`.
 - `addon/controllers/management/contacts/customers/details.js` — `actionButtons` pretvoren u getter; dodato „Reset Password“ dugme gated `permission: 'iam create user'` (injektovan `customerActions` + `intl` servis).
-- `translations/en-us.yaml` — ključ `customer.reset-password: "Reset Password"` (ostali locale-i fallback-uju na en-us).
+- `translations/en-us.yaml` **I** `console/translations/en-us.yaml` — ključ `customer.reset-password: "Reset Password"`. **Mora u OBA fajla**: `console/Dockerfile.dev` overlay-uje `packages/fleetops/{addon,app}` na npm-installed engine ali NE `packages/fleetops/translations/`, pa build čita `console/translations/en-us.yaml` (`COPY console/ .`). Ako je ključ samo u fleetops translations → UI prikaže „Missing translation ...". (Isti gotcha kao bulk-print i18n keys.)
 
 **Distinkcija (bitno):** customer-ov `User` ima `type = 'customer'`; console-invite (`UserInvited`) je za takve usere suprimovan preko `Notification::sending` listenera u `server/src/Providers/FleetOpsServiceProvider.php` (~L116-123). Zato reset (i kreiranje naloga) šalju **isključivo** `CustomerCredentialsMail`, nikad console mejl. NB: komentar u `server/src/Models/Contact.php` (~L356) pogrešno upućuje na `AppServiceProvider` — stvarni listener je u `FleetOpsServiceProvider`.
 
