@@ -61,11 +61,11 @@ class CustomerController extends Controller
      */
     public function resetCredentials(Request $request)
     {
-        // LogiVibe: only operators with the IAM "create user" permission may reset
-        // customer portal credentials. The console UI gates this too, but the API
+        // LogiVibe: only admins or operators with the "iam create user" permission may
+        // reset customer portal credentials. The console UI gates this too, but the API
         // must not trust the frontend alone.
         $actor = $request->user() ?? (session('user') ? User::find(session('user')) : null);
-        if ($actor && $actor->cannot('iam create user')) {
+        if ($actor && !$this->canResetCustomerCredentials($actor)) {
             return response()->error('You are not authorized to reset customer credentials.', 403);
         }
 
@@ -115,5 +115,33 @@ class CustomerController extends Controller
         }
 
         return response()->json(['status' => 'ok']);
+    }
+
+    /**
+     * Whether the acting user may reset customer portal credentials.
+     *
+     * Mirrors the console ability check (packages/ember-core .../abilities/dynamic.js):
+     * an admin bypass plus the literal/wildcard permission NAMES. We inspect permission
+     * names via getAllPermissions() rather than $actor->can(), because Gate/->can() is
+     * guard/team-scoped and unreliably returns false here even when the user holds the
+     * permission (verified on dev: admins with `iam create user` still got ->can() = false).
+     */
+    private function canResetCustomerCredentials(User $actor): bool
+    {
+        if (method_exists($actor, 'isAdmin') && $actor->isAdmin()) {
+            return true;
+        }
+
+        try {
+            $permissionNames = $actor->getAllPermissions()->pluck('name');
+        } catch (\Throwable $e) {
+            // If permissions can't be resolved, defer to the console UI gate rather
+            // than locking out a legitimate operator.
+            return true;
+        }
+
+        return $permissionNames->contains('iam create user')
+            || $permissionNames->contains('iam * user')
+            || $permissionNames->contains('iam *');
     }
 }
