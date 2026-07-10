@@ -494,6 +494,85 @@ export default class OrderActionsService extends ResourceActionService {
         });
     }
 
+    @action async bulkPrint(selected = []) {
+        selected = [...(isArray(selected) ? selected : []), ...this.tableContext.getSelectedRows()];
+
+        if (!selected || selected.length === 0) {
+            return this.notifications.warning(this.intl.t('common.no-resource-selected', { resource: this.intl.t('resource.orders') }));
+        }
+
+        const ids = selected.map((order) => order.public_id).filter(Boolean);
+
+        // render dialog to display the combined label sheet within
+        this.modalsManager.show(`modals/order-label`, {
+            title: this.intl.t('common.bulk-print-labels'),
+            modalClass: 'modal-xl',
+            acceptButtonText: this.intl.t('common.done'),
+            hideDeclineButton: true,
+        });
+
+        try {
+            // load the merged pdf label sheet from base64
+            // eslint-disable-next-line no-undef
+            const fileReader = new FileReader();
+            const { data: pdfStream } = await this.fetch.post('orders/bulk-label?format=base64', { ids });
+            // eslint-disable-next-line no-undef
+            const base64 = await fetch(`data:application/pdf;base64,${pdfStream}`);
+            const blob = await base64.blob();
+            // expose an object URL so the user can trigger the native print dialog
+            // eslint-disable-next-line no-undef
+            const printUrl = URL.createObjectURL(blob);
+            this.modalsManager.setOption('printUrl', printUrl);
+            this.modalsManager.setOption('onPrint', () => this.printPdf(printUrl));
+            // load into file reader
+            fileReader.onload = (event) => {
+                const data = event.target.result;
+                this.modalsManager.setOption('data', data);
+            };
+            fileReader.readAsDataURL(blob);
+        } catch (err) {
+            this.notifications.error(this.intl.t('order.prompts.failed-to-load-order-label'));
+            debug('Error loading bulk order label data: ' + err.message);
+        }
+    }
+
+    /**
+     * Opens the OS print dialog for a PDF object URL. Uses a hidden iframe so
+     * desktop browsers print in one click; falls back to opening the PDF in a
+     * new tab (mobile Safari, where iframe printing is unavailable).
+     */
+    @action printPdf(url) {
+        if (!url) {
+            return;
+        }
+
+        try {
+            // eslint-disable-next-line no-undef
+            const doc = document;
+            let frame = doc.getElementById('logivibe-print-frame');
+            if (frame) {
+                frame.remove();
+            }
+            frame = doc.createElement('iframe');
+            frame.id = 'logivibe-print-frame';
+            frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+            frame.src = url;
+            frame.onload = () => {
+                try {
+                    frame.contentWindow.focus();
+                    frame.contentWindow.print();
+                } catch (e) {
+                    // eslint-disable-next-line no-undef
+                    window.open(url, '_blank');
+                }
+            };
+            doc.body.appendChild(frame);
+        } catch (e) {
+            // eslint-disable-next-line no-undef
+            window.open(url, '_blank');
+        }
+    }
+
     @action async viewLabel(order) {
         // render dialog to display label within
         this.modalsManager.show(`modals/order-label`, {
@@ -512,6 +591,11 @@ export default class OrderActionsService extends ResourceActionService {
             // eslint-disable-next-line no-undef
             const base64 = await fetch(`data:application/pdf;base64,${pdfStream}`);
             const blob = await base64.blob();
+            // expose an object URL so the user can trigger the native print dialog
+            // eslint-disable-next-line no-undef
+            const printUrl = URL.createObjectURL(blob);
+            this.modalsManager.setOption('printUrl', printUrl);
+            this.modalsManager.setOption('onPrint', () => this.printPdf(printUrl));
             // load into file reader
             fileReader.onload = (event) => {
                 const data = event.target.result;

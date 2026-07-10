@@ -969,6 +969,150 @@ class OrderController extends Controller
     }
 
     /**
+     * Resolve a scanned QR/barcode value (a UUID) to its parent Order.
+     *
+     * Fleetbase encodes QR/barcodes from the owner UUID (see TrackingNumber + Entity),
+     * so a scanned package code is either an Order uuid (order-level label) or an
+     * Entity uuid (per-package label). Both resolve to the owning Order. Resolution
+     * is intentionally done without global scopes so cross-company hits can return a
+     * proper 403 (instead of a misleading 404); the caller must check the company.
+     */
+    private function resolveScannedOrder(?string $code): ?Order
+    {
+        if (empty($code)) {
+            return null;
+        }
+
+        // Order-level label: the scanned value is the order uuid.
+        $order = Order::where('uuid', $code)->withoutGlobalScopes()->first();
+        if ($order) {
+            return $order;
+        }
+
+        // Entity (package) label: the scanned value is an entity uuid -> resolve the parent order via payload.
+        $entity = Entity::where('uuid', $code)->withoutGlobalScopes()->first();
+        if ($entity && $entity->payload_uuid) {
+            return Order::where('payload_uuid', $entity->payload_uuid)->withoutGlobalScopes()->first();
+        }
+
+        return null;
+    }
+
+    /**
+     * Relations needed to fully serialize an order for the driver scan flow
+     * (pickup/dropoff, assigned driver, tracking). Custom fields are appended by
+     * the Order resource's withCustomFields() and need no explicit eager load.
+     */
+    private function scannedOrderRelations(): array
+    {
+        return ['payload.pickup', 'payload.dropoff', 'payload.waypoints', 'payload.entities', 'orderConfig', 'trackingNumber', 'trackingStatuses', 'driverAssigned'];
+    }
+
+    /**
+     * Preview a scanned package: resolve a QR code (UUID) to its order WITHOUT mutating anything.
+     *
+     * Used by the FlyBox driver app so the driver can review delivery details (status,
+     * pickup, dropoff, schedule, notes, recipient phone "broj-primaoca", COD amount
+     * "cena-otkupa") before confirming that they are taking the package. The driver app
+     * computes "already assigned to someone else" from the order's own `driver_assigned`
+     * relative to the logged-in driver, so no extra meta is returned here.
+     *
+     * POST /v1/orders/scan-resolve  { code: <uuid> }
+     *
+     * @return \Fleetbase\FleetOps\Http\Resources\v1\Order
+     */
+    public function scanResolve(Request $request)
+    {
+        // On /v1 token-authenticated routes the company/user are exposed via the session
+        // (set by the fleetbase.api middleware), NOT via $request->user() — which is null here.
+        $companyUuid = session('company');
+        if (empty($companyUuid)) {
+            return response()->json(['error' => 'Driver authentication required.'], 403);
+        }
+
+        $order = $this->resolveScannedOrder($request->input('code'));
+        if (!$order) {
+            return response()->json(['error' => 'Package not found.'], 404);
+        }
+
+        if ($order->company_uuid !== $companyUuid) {
+            return response()->json(['error' => 'Package belongs to another company.'], 403);
+        }
+
+        $order->load($this->scannedOrderRelations());
+
+        return new OrderResource($order);
+    }
+
+    /**
+     * Self-assign a scanned package to the authenticated driver and dispatch it.
+     *
+     * The driver scans a package QR code and confirms taking it: this assigns the order
+     * to the current driver and dispatches it (status -> dispatched) so it leaves the
+     * "created" state and shows up in the driver's order list. The claim is race-safe
+     * via a row lock so two drivers cannot take the same package; assigning to the same
+     * driver again is idempotent.
+     *
+     * POST /v1/orders/scan-assign  { code: <uuid> }
+     *
+     * @return \Fleetbase\FleetOps\Http\Resources\v1\Order
+     */
+    public function scanAssign(Request $request)
+    {
+        // Company/user come from the session (set by the fleetbase.api middleware for token auth);
+        // $request->user() is null on these /v1 routes.
+        $companyUuid = session('company');
+        if (empty($companyUuid)) {
+            return response()->json(['error' => 'Driver authentication required.'], 403);
+        }
+
+        // Resolve the current driver from the authenticated session — never trust a client-supplied id.
+        $driver = Driver::where('user_uuid', session('user'))->where('company_uuid', $companyUuid)->withoutGlobalScopes()->first();
+        if (!$driver) {
+            return response()->json(['error' => 'No driver profile found for the current user.'], 403);
+        }
+
+        $resolved = $this->resolveScannedOrder($request->input('code'));
+        if (!$resolved) {
+            return response()->json(['error' => 'Package not found.'], 404);
+        }
+
+        if ($resolved->company_uuid !== $companyUuid) {
+            return response()->json(['error' => 'Package belongs to another company.'], 403);
+        }
+
+        // Already taken by a different driver.
+        if ($resolved->driver_assigned_uuid && $resolved->driver_assigned_uuid !== $driver->uuid) {
+            return response()->json(['error' => 'Package already assigned to another driver.'], 409);
+        }
+
+        // Atomic claim when unassigned: a single conditional UPDATE is race-safe on its own, so two
+        // drivers scanning at once cannot both win. We deliberately avoid wrapping this in an explicit
+        // DB::transaction — the dispatch/activity flow below fires afterCommit events and does its own
+        // DB work, which breaks under Octane with "There is no active transaction" when nested in one.
+        if (empty($resolved->driver_assigned_uuid)) {
+            $claimed = Order::withoutGlobalScopes()
+                ->where('uuid', $resolved->uuid)
+                ->whereNull('driver_assigned_uuid')
+                ->update(['driver_assigned_uuid' => $driver->uuid, 'updated_at' => now()]);
+
+            // Lost the race to another driver between the check and the claim.
+            if ($claimed === 0) {
+                return response()->json(['error' => 'Package already assigned to another driver.'], 409);
+            }
+        }
+
+        // Dispatch so the order leaves "created" and appears in the driver's list (idempotent if
+        // already dispatched). Done outside a transaction, mirroring OrderController@dispatchOrder.
+        $order = $resolved->fresh();
+        $order->firstDispatchWithActivity();
+
+        $order->load($this->scannedOrderRelations());
+
+        return new OrderResource($order);
+    }
+
+    /**
      * Update an order activity.
      *
      * @return \Fleetbase\Http\Resources\v1\Order
