@@ -5,6 +5,8 @@ common:
   proof-of-delivery: Proof of Delivery
   ad-hoc: As-Hoc
   bulk-dispatch: Bulk Dispatch
+  bulk-print-labels: Bulk Print Labels
+  no-resource-selected: No {resource} selected
   dispatch-orders: Dispatch Orders
   dispatch-order: Dispatch Order
   assign-driver: Assign Driver
@@ -355,6 +357,7 @@ contact:
     upload-new-photo: Upload New Photo
 
 customer:
+  reset-password: Reset Password
   fields:
     customer-details: Customer Details
     select-address: Select Address

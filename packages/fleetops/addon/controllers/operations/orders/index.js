@@ -117,6 +117,12 @@ export default class OperationsOrdersIndexController extends Controller {
                 icon: 'user-plus',
                 fn: this.orderActions.bulkAssignDriver,
             },
+            { separator: true },
+            {
+                label: this.intl.t('common.bulk-print-labels'),
+                icon: 'print',
+                fn: this.orderActions.bulkPrint,
+            },
         ];
     }
 

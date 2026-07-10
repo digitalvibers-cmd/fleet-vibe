@@ -127,6 +127,11 @@ export default class ManagementContactsCustomersController extends ManagementCon
                         permission: 'fleet-ops update contact',
                     },
                     {
+                        label: this.intl.t('customer.reset-password'),
+                        fn: this.contactActions.resetCredentials,
+                        permission: 'iam create user',
+                    },
+                    {
                         separator: true,
                     },
                     {

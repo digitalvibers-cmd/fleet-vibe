@@ -81,4 +81,17 @@ export default class CustomerActionsService extends ContactActionsService {
             });
         },
     };
+
+    /**
+     * Opens the confirmation modal that resets a customer's portal password. The API
+     * generates a new password and emails it to the customer (customer-portal only).
+     * Gated in the UI by the `iam create user` permission on the action/button.
+     */
+    resetCredentials = (customer, options = {}) => {
+        return this.modalsManager.show('modals/reset-customer-credentials', {
+            customer,
+            onPasswordResetComplete: this.refresh,
+            ...options,
+        });
+    };
 }

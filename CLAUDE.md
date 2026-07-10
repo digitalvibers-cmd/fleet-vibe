@@ -134,6 +134,46 @@ Custom fields ("cena-otkupa", "broj-primaoca") definišu se po `OrderConfig`-u �
 
 Orphaned CFV-i (kada novi config nema polje sa istim `name`) ostaju u bazi nepromenjeni — vraćaju se ako se tip vrati na config gde poklapanje postoji. Nema masovne migracije postojećih porudžbina; re-link se dešava pri sledećem type change-u na svakoj porudžbini.
 
+### LogiVibe core fleetops modifikacije (QR scan self-assign za FlyBox Driver app)
+
+Mobilna aplikacija za vozače (`flybox-driver-app`, zaseban repo na `~/Projects/flybox-driver-app/`) skenira QR kod sa paketa da bi se vozač sam dodelio na porudžbinu. App gађa **PUBLIC `/v1/`** API sa driver Sanctum tokenom (`@fleetbase/sdk` default namespace je `v1`), pa endpointi žive u `Api\v1\OrderController`-u (NE Internal). Pri upstream fleetops sync-u re-aplicirati ručno (`git log -- packages/fleetops/`):
+
+- `server/src/Http/Controllers/Api/v1/OrderController.php` (novo) — tri metode:
+  - `resolveScannedOrder(?string $code): ?Order` (private) — Fleetbase QR/barcode kodira **owner UUID** (`DNS2D::getBarcodePNG($owner_uuid, 'QRCODE')`), NE `tracking_number` string. Skener vraća goli UUID. Resolve: prvo `Order::where('uuid', $code)`; ako nema, `Entity::where('uuid', $code)` → parent order preko `payload_uuid`. Sve `withoutGlobalScopes()` da cross-company vrati 403 (a ne 404); caller eksplicitno proverava `company_uuid`.
+  - `scanResolve(Request)` → `POST /v1/orders/scan-resolve` `{ code }` — preview, **bez mutacije**. Vraća `OrderResource` (pickup/dropoff/custom fields preko `withCustomFields()`). App sam računa "već dodeljen drugom" iz `order.driver_assigned` vs ulogovani vozač. 404 ako ne postoji, 403 druga firma.
+  - `scanAssign(Request)` → `POST /v1/orders/scan-assign` `{ code }` — dodeljuje + dispečuje. **Važno (Fleetbase auth gotcha):** na `/v1/` token rutama `$request->user()` je `null` — firma i user se čitaju iz **sesije** koju postavlja `fleetbase.api` middleware: `session('company')` i `session('user')` (isti obrazac kao 22× `session('company')` u OrderController-u). Trenutni vozač = `Driver::where('user_uuid', session('user'))->where('company_uuid', session('company'))`. **Race-safe claim BEZ `DB::transaction`**: jedan uslovni `Order::...->whereNull('driver_assigned_uuid')->update([...])` je sam po sebi atomičan (dva vozača istovremeno → drugi dobije 0 affected rows → 409). **NE umotavati u `DB::transaction`** — `firstDispatchWithActivity()` puca pod Octane-om sa `PDOException "There is no active transaction"` (dispatch flow okida `afterCommit` evente i radi sopstveni DB rad, što razbija transaction stack po workeru, intermitentno ~50% 500). 409 ako je dodeljen DRUGOM vozaču (idempotentno ako je isti — preskače claim). Posle claim-a: `$order->fresh()->firstDispatchWithActivity()` VAN transakcije (kao `OrderController@dispatchOrder`). **Dispatch je obavezan** — Orders lista u app-u filtrira `created` status, pa puko `driver_assigned_uuid` ne bi prikazalo porudžbinu.
+- `server/src/routes.php` — dve rute u `/v1/orders` grupi, PRE `{id}` ruta: `scan-resolve`, `scan-assign`.
+
+**Nema** izmene Order Configuration-a, nema novog `picked_up` activity tipa — assign + dispatch je dovoljan signal. Frontend (screens, navigacija) je u `flybox-driver-app` repou, ne ovde.
+
+### LogiVibe core fleetops modifikacije (Customer portal password reset iz konzole)
+
+Operateri sa `iam create user` permisijom mogu iz konzole (Management → Contacts → Customers) da resetuju lozinku customera za **korisnički portal**. Backend generiše novu lozinku (`Str::random(12)`), poništi sve Sanctum tokene (stara portal sesija pada) i pošalje customeru `CustomerCredentialsMail` — **isti mejl kao pri kreiranju naloga, isključivo za portal**. Cela feature živi u `packages/fleetops/` (embedded) i pri upstream sync-u se re-aplicira ručno (`git log -- packages/fleetops/`):
+
+- `server/src/Http/Controllers/Internal/v1/CustomerController.php` — `resetCredentials`: (a) backend permission guard `canResetCustomerCredentials($actor)` → 403 (UI gate nije jedina odbrana). **Bitno:** guard preslikava frontend `abilities/dynamic.js` — `isAdmin` bypass + provera **imena** permisija (`iam create user` / `iam * user` / `iam *`) preko `getAllPermissions()->pluck('name')`, a NE `$actor->can('iam create user')`. Razlog: Gate/`->can()` je guard/team-scoped i ovde lažno vraća `false` čak i za admina koji ima permisiju (verifikovano na dev-u). (b) ako `password` nije prosleđen, auto-generiše `Str::random(12)` i forsira slanje mejla; (c) radi **samo nad postojećim** portal userom — `createUser()` fallback je uklonjen da flow nikad ne uđe u putanju kreiranja naloga / `assignCompany()`.
+- `server/src/Http/Controllers/Api/…` nema izmene; ruta `POST customers/reset-credentials` već postoji u `server/src/routes.php` (internal `customers` grupa).
+- `server/src/Mail/CustomerCredentialsMail.php` + `server/resources/views/mail/customer-credentials.blade.php` — postojeći portal mejl (srpski, `https://flybox.rs`), reuse-ovan.
+- `server/src/Support/CustomerAccessRevoker.php` — poništava tokene (postojeći).
+- `addon/components/modals/reset-customer-credentials.{js,hbs}` — pojednostavljeni na **potvrdu bez polja za lozinku** (uklonjena password/confirm/checkbox polja); `confirm` šalje samo `{ customer, send_credentials: true }`. Re-export u `app/components/modals/reset-customer-credentials.js` (bez izmene).
+- `addon/services/customer-actions.js` — nova metoda `resetCredentials(customer)` koja otvara modal sa `onPasswordResetComplete: this.refresh`.
+- `addon/controllers/management/contacts/customers.js` — dropdown akcija „Reset Password“ gated `permission: 'iam create user'`.
+- `addon/controllers/management/contacts/customers/details.js` — `actionButtons` pretvoren u getter; dodato „Reset Password“ dugme gated `permission: 'iam create user'` (injektovan `customerActions` + `intl` servis).
+- `translations/en-us.yaml` **I** `console/translations/en-us.yaml` — ključ `customer.reset-password: "Reset Password"`. **Mora u OBA fajla**: `console/Dockerfile.dev` overlay-uje `packages/fleetops/{addon,app}` na npm-installed engine ali NE `packages/fleetops/translations/`, pa build čita `console/translations/en-us.yaml` (`COPY console/ .`). Ako je ključ samo u fleetops translations → UI prikaže „Missing translation ...". (Isti gotcha kao bulk-print i18n keys.)
+
+**Distinkcija (bitno):** customer-ov `User` ima `type = 'customer'`; console-invite (`UserInvited`) je za takve usere suprimovan preko `Notification::sending` listenera u `server/src/Providers/FleetOpsServiceProvider.php` (~L116-123). Zato reset (i kreiranje naloga) šalju **isključivo** `CustomerCredentialsMail`, nikad console mejl. NB: komentar u `server/src/Models/Contact.php` (~L356) pogrešno upućuje na `AppServiceProvider` — stvarni listener je u `FleetOpsServiceProvider`.
+
+### LogiVibe core fleetops modifikacije (Bulk print opremnica / order labels)
+
+Operater na table layout-u porudžbina može da čekira više porudžbina i kroz bulk-action dugme pokrene **Bulk Print** — jedan preview PDF sa svim otpremnicama u mreži (2 kolone × 4 reda = do 8 po A4 strani, svaka u okviru radi sečenja na samolepljivom papiru). Svaka otpremnica: ID porudžbine, QR kod, tracking number, pickup, drop-off, entiteti. Reuse-uje postojeći `modals/order-label` modal (samo embeduje PDF) i DomPDF infrastrukturu single-label feature-a. Izmenjeni/novi fajlovi:
+
+- `server/src/routes.php` — `$router->post('bulk-label', $controller('bulkLabel'));` u `orders` grupi (pored `label/{id}`).
+- `server/src/Http/Controllers/Internal/v1/OrderController.php` — nova `bulkLabel(Request $request)` metoda + `use Barryvdh\DomPDF\Facade\Pdf;`. Prima `ids` (public_id ili uuid), učitava porudžbine `withoutGlobalScopes`, sortira po redosledu selekcije, renderuje `fleetops::labels/bulk` view kroz DomPDF (`setPaper('a4')`). `format` = `stream`/`base64`/`text`/`pdf` (isti obrazac kao `label()`).
+- `server/resources/views/labels/bulk.php` (novi) — grid view; `$orders->chunk(8)` po strani, `page-break-after` između strana; table-based layout (DomPDF ne podržava flexbox), svaka `td.label-cell` ima `border: 1px solid #414141`.
+- `addon/controllers/operations/orders/index.js` — nov unos u `get bulkActions()` (`icon: 'print'`, `fn: this.orderActions.bulkPrint`).
+- `addon/services/order-actions.js` — nova `@action async bulkPrint(selected = [])`; merge selekcije sa `tableContext.getSelectedRows()`, POST `orders/bulk-label?format=base64` sa `{ ids }`, isti `FileReader` → `modalsManager.setOption('data', ...)` flow kao `viewLabel`. Dodatno: `bulkLabel` view uključuje naziv customera (`data_get($order,'customer.name')`), custom fields `cena-otkupa`/`broj-primaoca` (batch `CustomFieldValue::whereIn('subject_uuid', …)->with('customField')` grupisano po order uuid, prikaz kao raw string isto kao portal) i `created_at`.
+- `addon/services/order-actions.js` + `addon/components/modals/order-label.hbs` — **Print dugme**: posle učitavanja PDF-a, `URL.createObjectURL(blob)` se čuva kao `printUrl` opcija + `onPrint` callback (`printPdf(url)` metoda). Modal prikazuje „Print" dugme kad `@options.printUrl` postoji. `printPdf` štampa preko skrivenog iframe-a (`contentWindow.print()` — desktop one-click), fallback `window.open(url,'_blank')` za mobilni Safari. Isti flow važi i za single-label `viewLabel` (deljeni `modals/order-label` modal).
+- `console/translations/en-us.yaml` — `common.bulk-print-labels` i `common.no-resource-selected` ključevi (NE u `packages/fleetops/translations/` jer Dockerfile.dev ne overlay-uje `translations/` — vidi „Docker Console Build" gore; `common.print` već postoji). Ključevi su i u `packages/fleetops/translations/en-us.yaml` radi kompletnosti ali build ih čita iz console bundle-a.
+
 ### LogiVibe console (`console/app/`) overrides — RSD valuta
 
 Sledeći fajlovi NISU u submodulima — žive u `console/app/` i traju kroz sve upstream sync-ove. Postoje zbog upstream Fleetbase bug-a: GeoIP whois (`/int/v1/lookup/whois`) vraća `currency_code: "RSD"` (flat), ali `MoneyInput.js` i `CurrencySelect.js` čitaju `whois.currency.code` (nested) — schemas ne match-uju, pa svi money inputi padaju na hardkodovan `'USD'` fallback uprkos `companies.currency = 'RSD'`.
@@ -262,6 +302,9 @@ The deploy scripts on each server (`/usr/local/bin/fleetvibe-deploy-{dev,prod,po
 - **Reverse Proxy**: Nginx with Let's Encrypt SSL
 - **Backups**: Hetzner Automated Backups + MySQL dump cron (every 6h)
 - **Monitoring**: Sentry (error tracking) + UptimeRobot (uptime) + Hetzner alerts
+
+### FlyBox Driver APK hosting (host nginx, ne httpd kontejner)
+Driver app (`flybox-driver-app` repo) se distribuira kao APK self-hostovan na ovom serveru. Host nginx vhost `fleetvibe-console` (`/etc/nginx/sites-available/fleetvibe-console`) ima `location /app/ { alias /opt/fleetvibe-apk/; … application/vnd.android.package-archive … }`. `/opt/fleetvibe-apk/` je vlasništvo `deploy` usera; driver-app GitHub Actions workflow `scp`-uje potpisan APK tamo. Link za vozače (DEV build): **https://fleetvibe.digitalvibe.rs/app/flybox-driver.apk**. CI deploy ključ (`APK_DEPLOY_SSH_KEY` secret u driver-app repou) je u `deploy` `authorized_keys`. Detalji: `flybox-driver-app/CLAUDE.md` → "CI/CD & Distribution".
 
 ## Customer Portal
 
