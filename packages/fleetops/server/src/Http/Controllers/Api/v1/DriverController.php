@@ -12,6 +12,7 @@ use Fleetbase\FleetOps\Http\Resources\v1\Driver as DriverResource;
 use Fleetbase\FleetOps\Jobs\SimulateDrivingRoute;
 use Fleetbase\FleetOps\Models\Driver;
 use Fleetbase\FleetOps\Models\Order;
+use Fleetbase\FleetOps\Support\Geocoding;
 use Fleetbase\FleetOps\Support\OSRM;
 use Fleetbase\FleetOps\Support\Utils;
 use Fleetbase\Http\Controllers\Controller;
@@ -28,6 +29,7 @@ use Geocoder\Laravel\Facades\Geocoder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -322,7 +324,7 @@ class DriverController extends Controller
             return new DriverResource($driver);
         }
 
-        $isGeocodable = Carbon::parse($driver->updated_at)->diffInMinutes(Carbon::now(), false) > 10 || empty($driver->country) || empty($driver->city);
+        $isGeocodable = $this->shouldReverseGeocode($driver, $latitude, $longitude);
 
         $positionData = [
             'location'  => new Point($latitude, $longitude),
@@ -375,6 +377,29 @@ class DriverController extends Controller
         broadcast(new DriverLocationChanged($driver));
 
         return new DriverResource($driver);
+    }
+
+    /**
+     * Determines whether this position ping may trigger a reverse geocode.
+     *
+     * Reverse geocoding here only refreshes the driver's cosmetic city/country
+     * columns, and every attempt is a billable Google call — even a failed one.
+     * The throttle is therefore keyed on the attempt, not on success: a failing
+     * geocoder must never re-arm itself on the next ping.
+     */
+    private function shouldReverseGeocode(Driver $driver, float $latitude, float $longitude): bool
+    {
+        if (!Geocoding::canGoogleGeocode()) {
+            return false;
+        }
+
+        // invalid coordinates still produce a billable 4xx — never send them
+        if (abs($latitude) > 90 || abs($longitude) > 180 || ($latitude === 0.0 && $longitude === 0.0)) {
+            return false;
+        }
+
+        // Cache::add is atomic: only the first ping in the window wins the slot
+        return Cache::add('geocode-attempted:driver:' . $driver->uuid, Carbon::now()->toDateTimeString(), Carbon::now()->addHours(6));
     }
 
     /**
