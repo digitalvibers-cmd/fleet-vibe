@@ -217,6 +217,7 @@ class Geocoding
 
     public static function canGoogleGeocode(): bool
     {
-        return Utils::notEmpty(config('services.google_maps.api_key'));
+        // env() fallback covers installs whose services.php predates the google_maps entry
+        return Utils::notEmpty(config('services.google_maps.api_key', env('GOOGLE_MAPS_API_KEY')));
     }
 }

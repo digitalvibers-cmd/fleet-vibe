@@ -49,4 +49,9 @@ return [
         'from' => env('CALLPROMN_FROM', ''),
         'base_url' => env('CALLPROMN_BASE_URL', 'https://api.messagepro.mn' ),
     ],
+
+    'google_maps' => [
+        'api_key' => env('GOOGLE_MAPS_API_KEY'),
+        'locale' => env('GOOGLE_MAPS_LOCALE', 'sr'),
+    ],
 ];
