@@ -21,6 +21,7 @@ use Fleetbase\Traits\Searchable;
 use Fleetbase\Traits\SendsWebhooks;
 use Fleetbase\Traits\TracksApiCredential;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -399,13 +400,30 @@ class Place extends Model
      */
     public static function getValuesFromGeocodingLookup(string $address): array
     {
+        // Positive-only cache: a successful lookup for an address never changes,
+        // but an empty result usually means the geocoder was down or over quota —
+        // caching that would poison the address until the cache is flushed by hand
+        // (this took the WMS order intake down repeatedly in July 2026).
+        $cacheKey = 'place-geocode:' . md5(mb_strtolower(trim($address)));
+
+        $cached = Cache::store('geocode')->get($cacheKey);
+        if (is_array($cached) && !empty($cached)) {
+            return $cached;
+        }
+
         $results = \Geocoder\Laravel\Facades\Geocoder::geocode($address)->get();
 
         if ($results->isEmpty() || !$results->first()) {
             return [];
         }
 
-        return static::getGoogleAddressArray($results->first());
+        $values = static::getGoogleAddressArray($results->first());
+
+        if (!empty($values)) {
+            Cache::store('geocode')->forever($cacheKey, $values);
+        }
+
+        return $values;
     }
 
     /**
