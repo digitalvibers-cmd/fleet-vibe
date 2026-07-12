@@ -71,18 +71,38 @@ class IntegrationWmsOrderController extends Controller
         $payload = new Payload();
         $payload->company_uuid = $companyUuid;
 
-        if ($pickup) {
-            $payload->setPickup($pickup, [
-                'callback' => function ($pickup, $payload): void {
-                    $payload->setCurrentWaypoint($pickup);
-                },
-            ]);
-        }
-        if ($dropoff) {
-            $payload->setDropoff($dropoff);
-        }
+        // Address resolution may geocode through Google; when that fails (dead key,
+        // quota, unresolvable address) the Place comes back null and would 500 here.
+        // A 500 makes the WMS client retry the same order forever — and every retry
+        // is another billable geocode attempt — so fail permanently with a 422 instead.
+        try {
+            if ($pickup) {
+                $payload->setPickup($pickup, [
+                    'callback' => function ($pickup, $payload): void {
+                        $payload->setCurrentWaypoint($pickup);
+                    },
+                ]);
+            }
+            if ($dropoff) {
+                $payload->setDropoff($dropoff);
+            }
 
-        $payload->save();
+            $payload->save();
+        } catch (\Throwable $e) {
+            Log::warning('[WMS API] Failed to resolve pickup/dropoff into a Place', [
+                'error'   => $e->getMessage(),
+                'pickup'  => is_scalar($pickup) ? $pickup : json_encode($pickup),
+                'dropoff' => is_scalar($dropoff) ? $dropoff : json_encode($dropoff),
+            ]);
+
+            if ($payload->exists) {
+                $payload->delete();
+            }
+
+            return response()->json([
+                'error' => 'Pickup or dropoff address could not be resolved to a location. Do not retry unchanged — include explicit coordinates (e.g. {"name": ..., "street1": ..., "location": {"type": "Point", "coordinates": [lng, lat]}}) or correct the address.',
+            ], 422);
+        }
 
         $firstWaypoint = $payload->getPickupOrFirstWaypoint();
         if ($firstWaypoint instanceof Place) {
