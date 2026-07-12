@@ -26,15 +26,16 @@ return [
         | Cache Duration
         |-----------------------------------------------------------------------
         |
-        | Specify the cache duration in seconds. The default approximates a
-        | "forever" cache, but there are certain issues with Laravel's forever
-        | caching methods that prevent us from using them in this project.
-        |
-        | Default: 9999999 (integer)
+        | Short on purpose: this layer caches whatever the provider returns,
+        | INCLUDING empty results from quota/outage failures. A long duration
+        | turns any transient Google failure into a permanently poisoned
+        | address (bit us in July 2026 — WMS order intake). Long-lived caching
+        | of successful lookups lives in Place::getValuesFromGeocodingLookup,
+        | which only ever stores non-empty results.
         |
         */
 
-        'duration' => 9999999,
+        'duration' => 300,
     ],
 
     /*
