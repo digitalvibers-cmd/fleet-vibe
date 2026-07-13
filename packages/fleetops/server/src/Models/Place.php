@@ -599,23 +599,22 @@ class Place extends Model
                 return static::create($place);
             }
 
-            // If has $attributes['address']
-            $address = data_get($place, 'address');
-            if ($address) {
-                $values = static::getValuesFromGeocodingLookup($address);
-                if (empty($values)) {
-                    return null;
-                }
-                return static::create(array_merge($place, $values));
-            }
+            // Compose the lookup from every locality field the payload provides —
+            // a bare street ("Bulevar Milutina Milankovica 1") often returns
+            // ZERO_RESULTS, while the same street with postal code/city resolves.
+            $street = data_get($place, 'address') ?: data_get($place, 'street1');
+            if ($street) {
+                $locality = trim(implode(' ', array_filter([data_get($place, 'postal_code'), data_get($place, 'city')])));
+                $composed = implode(', ', array_filter([$street, $locality, data_get($place, 'country')]));
 
-            // Perform google lookup to fill street1
-            $street1 = data_get($place, 'street1');
-            if ($street1) {
-                $values = static::getValuesFromGeocodingLookup($street1);
+                $values = static::getValuesFromGeocodingLookup($composed);
+                if (empty($values) && $composed !== $street) {
+                    $values = static::getValuesFromGeocodingLookup($street);
+                }
                 if (empty($values)) {
                     return null;
                 }
+
                 return static::create(array_merge($place, $values));
             }
 
