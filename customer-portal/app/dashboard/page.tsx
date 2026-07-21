@@ -101,9 +101,26 @@ export default function DashboardPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [printing, setPrinting] = useState(false);
+
+  const toggleSelected = useCallback((publicId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(publicId)) {
+        next.delete(publicId);
+      } else {
+        next.add(publicId);
+      }
+      return next;
+    });
+  }, []);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
+    // Clear selection on any reload/filter change so we never print orders
+    // that are no longer visible in the current list.
+    setSelectedIds(new Set());
     try {
       const params = new URLSearchParams({ sort: "-created_at", limit: "50" });
       if (searchQuery) params.set("query", searchQuery);
@@ -138,9 +155,63 @@ export default function DashboardPage() {
     fetchOrders();
   }, [fetchOrders]);
 
+  const allSelected = orders.length > 0 && orders.every((o) => selectedIds.has(o.public_id));
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      const everySelected =
+        orders.length > 0 && orders.every((o) => prev.has(o.public_id));
+      return everySelected ? new Set() : new Set(orders.map((o) => o.public_id));
+    });
+  }, [orders]);
+
+  const handlePrintLabels = useCallback(async () => {
+    if (selectedIds.size === 0 || printing) return;
+    setPrinting(true);
+    try {
+      const res = await fetch("/api/orders/labels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [...selectedIds] }),
+      });
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "Greška pri generisanju otpremnica.");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      // Open the PDF in a new tab for printing; fall back to a download if the
+      // browser blocks the popup (e.g. mobile Safari popup blocker).
+      const opened = window.open(url, "_blank");
+      if (!opened) {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "otpremnice.pdf";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+      // Revoke after a delay so the new tab/download has time to load the blob.
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch {
+      alert("Greška u komunikaciji sa serverom.");
+    } finally {
+      setPrinting(false);
+    }
+  }, [selectedIds, printing, router]);
+
   return (
     <div className="flex min-h-full flex-col">
-      <Header />
+      <Header
+        selectedCount={selectedIds.size}
+        onPrintLabels={handlePrintLabels}
+        printing={printing}
+      />
 
       {/* Main content */}
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
@@ -301,6 +372,23 @@ export default function DashboardPage() {
             <p className="mt-1 text-xs">Kreirajte vašu prvu narudžbinu za dostavu</p>
           </div>
         ) : (
+          <>
+            <div className="mb-3 flex items-center gap-2">
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleSelectAll}
+                  className="h-4 w-4 accent-primary"
+                />
+                Označi sve
+              </label>
+              {selectedIds.size > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  Odabrano: {selectedIds.size}
+                </span>
+              )}
+            </div>
           <div className="space-y-3">
             {orders.map((order) => {
               const dropoffName = order.payload?.dropoff?.name?.trim() || null;
@@ -314,12 +402,25 @@ export default function DashboardPage() {
                 order.custom_field_values,
                 RECIPIENT_PHONE_KEY
               );
+              const isSelected = selectedIds.has(order.public_id);
               return (
-                <button
+                <div
                   key={order.id}
-                  onClick={() => router.push(`/orders/${order.public_id}`)}
-                  className="group flex w-full items-start gap-4 rounded-2xl border border-border bg-white p-4 text-left transition hover:border-primary/30 hover:shadow-sm"
+                  className={`flex items-start gap-3 rounded-2xl border bg-white p-4 transition ${
+                    isSelected ? "border-primary/50 shadow-sm" : "border-border"
+                  }`}
                 >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleSelected(order.public_id)}
+                    aria-label={`Označi narudžbinu ${order.public_id}`}
+                    className="mt-1 h-5 w-5 shrink-0 cursor-pointer accent-primary"
+                  />
+                  <button
+                    onClick={() => router.push(`/orders/${order.public_id}`)}
+                    className="group flex flex-1 items-start gap-4 text-left"
+                  >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1.5">
                       <span className="text-sm font-semibold">
@@ -390,10 +491,12 @@ export default function DashboardPage() {
                   </div>
 
                   <ChevronRight className="mt-2 h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-primary" />
-                </button>
+                  </button>
+                </div>
               );
             })}
           </div>
+          </>
         )}
       </main>
     </div>

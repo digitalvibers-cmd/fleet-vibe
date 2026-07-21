@@ -348,6 +348,7 @@ Route::prefix(config('fleetops.api.routing.prefix', null))->namespace('Fleetbase
                                 $router->get('types', $controller('types'));
                                 $router->get('label/{id}', $controller('label'));
                                 $router->post('bulk-label', $controller('bulkLabel'));
+                                $router->post('customer-bulk-label', $controller('customerBulkLabel'));
                                 $router->get('next-activity/{id}', $controller('nextActivity'));
                                 $router->get('{id}/tracker', 'OrderController@trackerInfo');
                                 $router->get('{id}/eta', 'OrderController@waypointEtas');
