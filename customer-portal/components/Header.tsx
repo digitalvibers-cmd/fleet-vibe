@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import { Plus, LogOut, Building2, Upload } from "lucide-react";
+import { Plus, LogOut, Building2, Upload, Printer } from "lucide-react";
 import PwaInstallBanner from "./PwaInstallBanner";
 
 const NAV_LINKS = [
@@ -10,7 +10,13 @@ const NAV_LINKS = [
   { href: "/company", label: "Profil", icon: Building2 },
 ];
 
-export default function Header() {
+interface HeaderProps {
+  selectedCount?: number;
+  onPrintLabels?: () => void;
+  printing?: boolean;
+}
+
+export default function Header({ selectedCount = 0, onPrintLabels, printing = false }: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -63,6 +69,19 @@ export default function Header() {
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
+          {onPrintLabels && (
+            <button
+              onClick={onPrintLabels}
+              disabled={!selectedCount || printing}
+              className="flex items-center gap-1.5 rounded-[25px] border border-border px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted disabled:opacity-50 disabled:hover:bg-transparent"
+              title={selectedCount ? "Štampaj otpremnice za odabrane narudžbine" : "Odaberite narudžbine za štampu"}
+            >
+              <Printer className="h-4 w-4" />
+              <span>
+                Štampaj nalepnice{selectedCount ? ` (${selectedCount})` : ""}
+              </span>
+            </button>
+          )}
           <button
             onClick={() => router.push("/orders/import")}
             className="flex items-center gap-1.5 rounded-[25px] border border-border px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"

@@ -1125,6 +1125,84 @@ class OrderController extends FleetOpsController
     }
 
     /**
+     * Customer-portal counterpart of bulkLabel(): renders the same grid label PDF, but scoped to the
+     * authenticated customer's own orders.
+     *
+     * Portal requests authenticate with a customer contact token, exposed via session('user'). Unlike
+     * bulkLabel() (console-only, trusts caller-supplied ids), this method NEVER trusts the ids blindly —
+     * it applies the same ownership predicate as the CustomerOrders auth directive so a tampered `ids`
+     * array cannot leak another customer's labels. Non-owned ids are silently dropped from the result
+     * (same idiom as the directive), not rejected with 403.
+     *
+     * @return \Illuminate\Http\Response|\Symfony\Component\HttpFoundation\StreamedResponse
+     */
+    public function customerBulkLabel(Request $request)
+    {
+        $format = $request->input('format', 'stream');
+        $ids    = $request->array('ids');
+        $id     = session('user', $request->input('customer'));
+
+        if (empty($ids) || empty($id)) {
+            return response()->error('No orders provided to render labels.');
+        }
+
+        // Ownership is the only boundary here: mirror CustomerOrders directive
+        // (customer_uuid === session('user') OR the order's customer Contact belongs to this user).
+        $orders = Order::where(function ($query) use ($ids) {
+            $query->whereIn('public_id', $ids)->orWhereIn('uuid', $ids);
+        })
+            ->where(function ($query) use ($id) {
+                $query->where('customer_uuid', $id)
+                    ->orWhereHas('authenticatableCustomer', function ($query) use ($id) {
+                        $query->where('user_uuid', $id);
+                    });
+            })
+            ->withoutGlobalScopes()
+            ->with(['trackingNumber', 'company', 'customer', 'payload.pickup', 'payload.dropoff', 'payload.entities'])
+            ->get();
+
+        if ($orders->isEmpty()) {
+            return response()->error('Unable to render labels.');
+        }
+
+        // Preserve the selection order the client sent.
+        $orders = $orders->sortBy(function ($order) use ($ids) {
+            $index = array_search($order->public_id, $ids);
+            if ($index === false) {
+                $index = array_search($order->uuid, $ids);
+            }
+
+            return $index === false ? PHP_INT_MAX : $index;
+        })->values();
+
+        // Load custom field values (e.g. "cena-otkupa", "broj-primaoca") for all orders in one query,
+        // grouped by order uuid. Matches the direct-query pattern used by CustomFieldRelinker since
+        // Fleetbase stores the CustomFieldValue subject_type inconsistently across packages.
+        $customFieldsByOrder = CustomFieldValue::whereIn('subject_uuid', $orders->pluck('uuid')->all())
+            ->with('customField')
+            ->get()
+            ->groupBy('subject_uuid');
+
+        $html = view('fleetops::labels/bulk', ['orders' => $orders, 'customFieldsByOrder' => $customFieldsByOrder])->render();
+        $pdf  = Pdf::loadHTML($html)->setPaper('a4');
+
+        switch ($format) {
+            case 'text':
+                return response()->make($pdf->output());
+
+            case 'base64':
+                $base64 = base64_encode($pdf->output());
+
+                return response()->json(['data' => mb_convert_encoding($base64, 'UTF-8', 'UTF-8')]);
+
+            case 'pdf':
+            case 'stream':
+            default:
+                return $pdf->stream();
+        }
+    }
+
+    /**
      * Retrieve proof of delivery resources associated with a given order and optional subject.
      *
      * This method supports retrieving proofs related to the order itself or a subject within the order,
