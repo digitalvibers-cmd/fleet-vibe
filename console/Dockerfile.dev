@@ -13,6 +13,13 @@ ENV PATH=/root/.pnpm/bin:$PATH
 # Set environment
 ARG ENVIRONMENT=development
 
+# Client-side Google Maps *browser* key, baked into the built bundle at build time.
+# Value comes from the server .env ${GOOGLE_MAPS_BROWSER_KEY} (gitignored, HTTP-referrer
+# restricted in GCP) via docker-compose build.args — never hardcoded in the repo.
+# This is DISTINCT from the backend GOOGLE_MAPS_API_KEY (IP-restricted, server-side geocoding).
+ARG GOOGLE_MAPS_BROWSER_KEY=
+ENV GOOGLE_MAPS_BROWSER_KEY=$GOOGLE_MAPS_BROWSER_KEY
+
 # Copy console package files first (for layer caching)
 COPY console/package.json console/pnpm-lock.yaml ./
 COPY console/.npmr[c] ./

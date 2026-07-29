@@ -47,6 +47,14 @@ module.exports = function (environment) {
             publishableKey: getenv('STRIPE_KEY'),
         },
 
+        googleMaps: {
+            // Browser (client-side) Maps JS key. Baked in at build time from the
+            // server .env ${GOOGLE_MAPS_BROWSER_KEY} via the console Dockerfile ARG —
+            // never hardcoded in the repo. HTTP-referrer restricted in GCP. This is
+            // NOT the backend GOOGLE_MAPS_API_KEY (IP-restricted, server-side geocoding).
+            apiKey: getenv('GOOGLE_MAPS_BROWSER_KEY', ''),
+        },
+
         defaultValues: {
             categoryImage: getenv('DEFAULT_CATEGORY_IMAGE', 'https://flb-assets.s3.ap-southeast-1.amazonaws.com/images/fallback-placeholder-1.png'),
             placeholderImage: getenv('DEFAULT_PLACEHOLDER_IMAGE', 'https://flb-assets.s3.ap-southeast-1.amazonaws.com/static/image-file-icon.png'),
