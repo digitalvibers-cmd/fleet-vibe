@@ -68,3 +68,7 @@ builds/osx/frankenphp
 customer-portal/.next/
 customer-portal/.env.local
 customer-portal/node_modules/
+
+# Helm secret material (EKS chart) — commit only *.example templates
+infra/helm/secrets.env
+infra/helm/mysql.txt

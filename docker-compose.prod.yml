@@ -38,6 +38,7 @@ services:
       args:
         ENVIRONMENT: production
         FLEETBASE_ENV: prod
+        GOOGLE_MAPS_BROWSER_KEY: "${GOOGLE_MAPS_BROWSER_KEY}"
     ports:
       - "4201:4200"
     volumes:
@@ -93,7 +94,7 @@ services:
   customer-portal:
     build:
       args:
-        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY}"
+        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_BROWSER_KEY}"
         NEXT_PUBLIC_GOOGLE_MAPS_LANGUAGE: "sr"
         NEXT_PUBLIC_GOOGLE_MAPS_REGION: "RS"
         NEXT_PUBLIC_PORTAL_URL: "https://flybox.rs"

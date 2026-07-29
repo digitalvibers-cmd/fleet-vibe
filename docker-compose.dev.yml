@@ -43,6 +43,7 @@ services:
       args:
         ENVIRONMENT: development
         FLEETBASE_ENV: dev
+        GOOGLE_MAPS_BROWSER_KEY: "${GOOGLE_MAPS_BROWSER_KEY}"
     ports:
       - "4200:4200"
     volumes:
@@ -89,7 +90,7 @@ services:
   customer-portal:
     build:
       args:
-        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY}"
+        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_BROWSER_KEY}"
         NEXT_PUBLIC_GOOGLE_MAPS_LANGUAGE: "sr"
         NEXT_PUBLIC_GOOGLE_MAPS_REGION: "RS"
         NEXT_PUBLIC_PORTAL_URL: "https://portal-fleetvibe.digitalvibe.rs"

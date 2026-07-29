@@ -4,11 +4,14 @@
  * Singleton loader that ensures only one instance of the Google Maps SDK
  * is loaded per application session.
  *
- * TODO: Move API key to Ember environment config (config/environment.js)
- *       instead of hardcoding. See TODO.md for details.
+ * The API key is NOT hardcoded (the previous key was revoked). Supply a key
+ * either by passing it to `loadGoogleMaps(key)` or by setting the runtime
+ * global `window.__GOOGLE_MAPS_API_KEY__` (e.g. from fleetbase.config.json /
+ * console runtime config). It must be an HTTP-referrer-restricted browser key.
+ * See TODO.md.
  */
 
-const GOOGLE_MAPS_API_KEY = '***REMOVED***';
+const GOOGLE_MAPS_API_KEY = (typeof window !== 'undefined' && window.__GOOGLE_MAPS_API_KEY__) || '';
 
 let _loadPromise = null;
 

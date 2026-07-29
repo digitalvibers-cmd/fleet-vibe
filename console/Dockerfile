@@ -11,6 +11,13 @@ ENV PNPM_HOME=/root/.pnpm
 # Set environment
 ARG ENVIRONMENT=production
 
+# Client-side Google Maps *browser* key, baked into the built bundle at build time.
+# Value comes from the server .env ${GOOGLE_MAPS_BROWSER_KEY} (gitignored, HTTP-referrer
+# restricted in GCP) via docker-compose build.args — never hardcoded in the repo.
+# This is DISTINCT from the backend GOOGLE_MAPS_API_KEY (IP-restricted, server-side geocoding).
+ARG GOOGLE_MAPS_BROWSER_KEY=
+ENV GOOGLE_MAPS_BROWSER_KEY=$GOOGLE_MAPS_BROWSER_KEY
+
 # Add the pnpm global bin to the PATH
 ENV PATH=/root/.pnpm/bin:$PATH
 

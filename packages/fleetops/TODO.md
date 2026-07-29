@@ -2,19 +2,24 @@
 
 ## Google Maps API Key Configuration
 
-- [ ] **Move API key to Ember environment config**
-  - Currently hardcoded in `addon/utils/google-maps-loader.js`
-  - Should be moved to `config/environment.js` under `ENV.googleMaps.apiKey`
-  - The `PlaceAutocompleteInput` component and loader should read from config
-  - Reference: The same key is in `docker-compose.override.yml` for backend geocoding
+> **Done:** the old hardcoded key was revoked and removed. The browser Maps key
+> is now injected at build time — it lives only in the server `.env`
+> (`${GOOGLE_MAPS_BROWSER_KEY}`, gitignored) and is never hardcoded in the repo:
+>
+> `Dockerfile.dev` (ARG `GOOGLE_MAPS_BROWSER_KEY`) → `config/environment.js`
+> (`ENV.googleMaps.apiKey` via `getenv`) → `initializers/set-google-maps-key.js`
+> sets `window.__GOOGLE_MAPS_API_KEY__` → the fleetops engine
+> `google-maps-loader.js` reads that global (or an explicit `loadGoogleMaps(key)`).
+>
+> `GOOGLE_MAPS_BROWSER_KEY` is the HTTP-referrer-restricted **browser** key (shared
+> with the customer portal), distinct from `GOOGLE_MAPS_API_KEY` — the IP-restricted
+> **backend** key used only by PHP server-side geocoding.
+>
+> As a client-side key it is still visible in the served bundle at runtime (as is
+> unavoidable for any browser Maps key) — protect it via **HTTP-referrer
+> restrictions** in Google Cloud Console (Maps JavaScript API + Places API). The
+> shared browser key's referrer list must include BOTH portal and console domains.
 
 - [ ] **Consider per-tenant API key support**
-  - For SaaS multi-tenancy, each tenant may have their own Google Maps API key
   - Could be stored in company settings and fetched at runtime
   - Would require a backend endpoint: `GET /api/v1/settings/google-maps-key`
-
-- [ ] **API key restriction in Google Cloud Console**
-  - Ensure the key (`***REMOVED***`) has:
-    - **Maps JavaScript API** enabled
-    - **Places API** enabled
-    - HTTP referrer restrictions set for production domains

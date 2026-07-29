@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Titillium_Web, Open_Sans } from "next/font/google";
 import PwaProvider from "@/components/PwaProvider";
+import SourceOffer from "@/components/SourceOffer";
 import "./globals.css";
 
 const titilliumWeb = Titillium_Web({
@@ -45,6 +46,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <PwaProvider />
         {children}
+        <SourceOffer />
       </body>
     </html>
   );
