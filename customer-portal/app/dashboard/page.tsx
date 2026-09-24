@@ -21,6 +21,8 @@ import {
   getCustomFieldValue,
 } from "@/lib/custom-fields";
 import Header from "@/components/Header";
+import PrintLabelsDialog from "@/components/PrintLabelsDialog";
+import type { LabelRows } from "@/lib/label-layouts";
 
 const ARCHIVE_STATUSES = ["completed", "canceled", "order_canceled", "expired"];
 const ACTIVE_STATUSES = [
@@ -103,6 +105,7 @@ export default function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [printing, setPrinting] = useState(false);
+  const [printDialogOpen, setPrintDialogOpen] = useState(false);
 
   const toggleSelected = useCallback((publicId: string) => {
     setSelectedIds((prev) => {
@@ -165,14 +168,14 @@ export default function DashboardPage() {
     });
   }, [orders]);
 
-  const handlePrintLabels = useCallback(async () => {
+  const handlePrintLabels = useCallback(async (rows: LabelRows) => {
     if (selectedIds.size === 0 || printing) return;
     setPrinting(true);
     try {
       const res = await fetch("/api/orders/labels", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: [...selectedIds] }),
+        body: JSON.stringify({ ids: [...selectedIds], rows }),
       });
       if (res.status === 401) {
         router.push("/login");
@@ -198,6 +201,7 @@ export default function DashboardPage() {
       }
       // Revoke after a delay so the new tab/download has time to load the blob.
       setTimeout(() => URL.revokeObjectURL(url), 60000);
+      setPrintDialogOpen(false);
     } catch {
       alert("Greška u komunikaciji sa serverom.");
     } finally {
@@ -209,9 +213,17 @@ export default function DashboardPage() {
     <div className="flex min-h-full flex-col">
       <Header
         selectedCount={selectedIds.size}
-        onPrintLabels={handlePrintLabels}
+        onPrintLabels={() => setPrintDialogOpen(true)}
         printing={printing}
       />
+      {printDialogOpen && (
+        <PrintLabelsDialog
+          selectedCount={selectedIds.size}
+          printing={printing}
+          onClose={() => setPrintDialogOpen(false)}
+          onConfirm={handlePrintLabels}
+        />
+      )}
 
       {/* Main content */}
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">

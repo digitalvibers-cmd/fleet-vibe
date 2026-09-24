@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireValidSession } from "@/lib/auth";
+import { DEFAULT_LABEL_ROWS, isLabelRows } from "@/lib/label-layouts";
 
 const FLEETBASE_API_URL = process.env.FLEETBASE_API_URL || "http://localhost:8000";
 
@@ -17,6 +18,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => ({}));
   const ids = Array.isArray(body?.ids) ? body.ids : [];
+  const rows = isLabelRows(body?.rows) ? body.rows : DEFAULT_LABEL_ROWS;
 
   if (!ids.length) {
     return NextResponse.json(
@@ -33,7 +35,7 @@ export async function POST(request: NextRequest) {
       "Content-Type": "application/json",
       Accept: "application/pdf",
     },
-    body: JSON.stringify({ ids, format: "stream" }),
+    body: JSON.stringify({ ids, rows, format: "stream" }),
     cache: "no-store",
   });
 
