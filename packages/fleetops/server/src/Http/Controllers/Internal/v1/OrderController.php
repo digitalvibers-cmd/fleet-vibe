@@ -1105,7 +1105,12 @@ class OrderController extends FleetOpsController
             ->get()
             ->groupBy('subject_uuid');
 
-        $html = view('fleetops::labels/bulk', ['orders' => $orders, 'customFieldsByOrder' => $customFieldsByOrder])->render();
+        // `rows` = label rows per A4 sheet (2 columns x 2/4/6/8 rows); the view falls back to 4 for anything else.
+        $html = view('fleetops::labels/bulk', [
+            'orders'              => $orders,
+            'customFieldsByOrder' => $customFieldsByOrder,
+            'rows'                => $request->integer('rows', 4),
+        ])->render();
         $pdf  = Pdf::loadHTML($html)->setPaper('a4');
 
         switch ($format) {
@@ -1183,7 +1188,12 @@ class OrderController extends FleetOpsController
             ->get()
             ->groupBy('subject_uuid');
 
-        $html = view('fleetops::labels/bulk', ['orders' => $orders, 'customFieldsByOrder' => $customFieldsByOrder])->render();
+        // `rows` = label rows per A4 sheet (2 columns x 2/4/6/8 rows); the view falls back to 4 for anything else.
+        $html = view('fleetops::labels/bulk', [
+            'orders'              => $orders,
+            'customFieldsByOrder' => $customFieldsByOrder,
+            'rows'                => $request->integer('rows', 4),
+        ])->render();
         $pdf  = Pdf::loadHTML($html)->setPaper('a4');
 
         switch ($format) {

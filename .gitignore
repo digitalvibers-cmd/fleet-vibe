@@ -72,3 +72,12 @@ customer-portal/node_modules/
 # Helm secret material (EKS chart) — commit only *.example templates
 infra/helm/secrets.env
 infra/helm/mysql.txt
+
+# Internal ops docs / machine-specific config — kept local, not published
+CLAUDE.md
+ROADMAP.md
+.claude/
+Strategy
+UPUTSTVO_*.md
+debug-*.js
+**/.DS_Store
