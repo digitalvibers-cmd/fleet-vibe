@@ -615,7 +615,16 @@ class Place extends Model
                     return null;
                 }
 
-                return static::create(array_merge($place, $values));
+                // The request payload is the source of truth for what the sender typed:
+                // `name` is the recipient/contact name (NOT the address label), `phone`,
+                // `street1`, `city` etc. The geocoder must only contribute coordinates
+                // and fill fields the payload left empty — otherwise its street address
+                // overwrites the recipient name and it disappears from shipping labels.
+                $supplied = array_filter($place, function ($value) {
+                    return !is_null($value) && $value !== '';
+                });
+
+                return static::create(array_merge($values, $supplied, ['location' => $values['location']]));
             }
 
             // No location, no address, no street1 — cannot create a meaningful Place.
