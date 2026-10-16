@@ -106,8 +106,8 @@ use Fleetbase\Support\Utils; ?>
 								<span class="segment"><?= $pickup->country ?></span>
 							<?php } ?>
 						</div>
-						<?php if (!empty($pickup->phone_number)) { ?>
-							<div class="line"><?= $pickup->phone_number ?></div>
+						<?php if (!empty($pickup->phone)) { ?>
+							<div class="line"><?= $pickup->phone ?></div>
 						<?php } ?>
 					</div>
 				</div>
@@ -147,8 +147,8 @@ use Fleetbase\Support\Utils; ?>
 								<span class="segment"><?= $dropoff->country ?></span>
 							<?php } ?>
 						</div>
-						<?php if (!empty($dropoff->phone_number)) { ?>
-							<div class="line"><?= $dropoff->phone_number ?></div>
+						<?php if (!empty($dropoff->phone)) { ?>
+							<div class="line"><?= $dropoff->phone ?></div>
 						<?php } ?>
 					</div>
 				</div>

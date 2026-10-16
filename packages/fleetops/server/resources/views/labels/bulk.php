@@ -164,7 +164,9 @@ $inline = array_fill_keys($profile['inline'], true);
 		return $result;
 	};
 
-	$renderAddress = function ($place, $singleLine = false) {
+	// $withPhone=false for the dropoff: the recipient phone is printed on the "Primalac" line instead.
+	// NB: the Place column is `phone` (there is no `phone_number` attribute).
+	$renderAddress = function ($place, $singleLine = false, $withPhone = true) {
 		if (!$place) {
 			return '';
 		}
@@ -174,7 +176,7 @@ $inline = array_fill_keys($profile['inline'], true);
 				$place->street1 ?? null,
 				$place->street2 ?? null,
 				trim(implode(' ', array_filter([$place->postal_code ?? null, $place->city ?? null]))),
-				$place->phone_number ?? null,
+				$withPhone ? ($place->phone ?? null) : null,
 			]);
 
 			return ' ' . htmlspecialchars(implode(', ', $parts));
@@ -194,8 +196,8 @@ $inline = array_fill_keys($profile['inline'], true);
 		if (!empty($cityLine)) {
 			$html .= '<div>' . htmlspecialchars(implode(', ', $cityLine)) . '</div>';
 		}
-		if (!empty($place->phone_number)) {
-			$html .= '<div>' . htmlspecialchars((string) $place->phone_number) . '</div>';
+		if ($withPhone && !empty($place->phone)) {
+			$html .= '<div>' . htmlspecialchars((string) $place->phone) . '</div>';
 		}
 
 		return $html;
@@ -221,7 +223,12 @@ $inline = array_fill_keys($profile['inline'], true);
 						$customerName  = data_get($order, 'customer.name');
 						$customFields  = $extractCustomFields($order);
 						$cod           = $customFields['cod'];
-						$recipientPhone = $customFields['recipient_phone'];
+						// Recipient = dropoff contact. `dropoff.name` is the recipient's name as sent by the
+						// WMS / portal (not an address label); phone prefers the "broj-primaoca" custom field
+						// and falls back to the dropoff place phone.
+						$recipientName  = $dropoff ? trim((string) $dropoff->name) : '';
+						$recipientPhone = $customFields['recipient_phone'] ?: ($dropoff ? trim((string) $dropoff->phone) : '');
+						$recipientLine  = implode(', ', array_filter([$recipientName, $recipientPhone]));
 						$createdAt     = $order->created_at ? $order->created_at->format('d.m.Y H:i') : null;
 						?>
 						<td class="label-cell">
@@ -257,7 +264,7 @@ $inline = array_fill_keys($profile['inline'], true);
 							<?php if ($dropoff) { ?>
 								<div class="addr-block">
 									<span class="addr-label">DROP-OFF:</span>
-									<?= $renderAddress($dropoff, isset($inline['dropoff'])) ?>
+									<?= $renderAddress($dropoff, isset($inline['dropoff']), false) ?>
 								</div>
 							<?php } ?>
 
@@ -280,14 +287,14 @@ $inline = array_fill_keys($profile['inline'], true);
 								</div>
 							<?php } ?>
 
-							<?php if (!empty($cod) || !empty($recipientPhone)) { ?>
+							<?php if (!empty($cod) || !empty($recipientLine)) { ?>
 								<div class="label-info">
 									<?php if (!empty($cod)) { ?>
 										<span class="info-item"><strong>Otkup:</strong> <?= htmlspecialchars((string) $cod) ?> RSD</span>
 									<?php } ?>
-									<?php if (!empty($cod) && !empty($recipientPhone) && isset($inline['info'])) { ?> · <?php } ?>
-									<?php if (!empty($recipientPhone)) { ?>
-										<span class="info-item"><strong>Primalac:</strong> <?= htmlspecialchars((string) $recipientPhone) ?></span>
+									<?php if (!empty($cod) && !empty($recipientLine) && isset($inline['info'])) { ?> · <?php } ?>
+									<?php if (!empty($recipientLine)) { ?>
+										<span class="info-item"><strong>Primalac:</strong> <?= htmlspecialchars($recipientLine) ?></span>
 									<?php } ?>
 								</div>
 							<?php } ?>

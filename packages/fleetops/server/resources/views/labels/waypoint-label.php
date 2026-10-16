@@ -86,8 +86,8 @@ use Fleetbase\Support\Utils;
                                 <span class="segment"><?= $dropoff->country ?></span>
                             <?php } ?>
                         </div>
-                        <?php if (!empty($dropoff->phone_number)) { ?>
-                            <div class="line"><?= $dropoff->phone_number ?></div>
+                        <?php if (!empty($dropoff->phone)) { ?>
+                            <div class="line"><?= $dropoff->phone ?></div>
                         <?php } ?>
                     </div>
                 </div>
