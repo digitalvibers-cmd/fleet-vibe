@@ -20,7 +20,9 @@ class PlaceObserver
         // uppercase all attributes above
         foreach ($toUppercase as $attribute) {
             if (isset($place->{$attribute}) && is_string($place->{$attribute})) {
-                $place->{$attribute} = strtoupper($place->{$attribute});
+                // mb_strtoupper: plain strtoupper leaves non-ASCII letters (š, ć, ž, đ, č)
+                // lowercase, producing "MILOš MARINKOVIć" on labels and in the console.
+                $place->{$attribute} = mb_strtoupper($place->{$attribute}, 'UTF-8');
             }
         }
     }
