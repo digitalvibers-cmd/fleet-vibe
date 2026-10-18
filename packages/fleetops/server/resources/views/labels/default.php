@@ -175,6 +175,14 @@ use Fleetbase\Support\Utils; ?>
 				</div>
 			</div>
 		<?php } ?>
+		<?php $orderNotes = $order ? trim((string) $order->notes) : ''; ?>
+		<?php if ($orderNotes !== '') { ?>
+			<div class="group">
+				<div style="padding: 15px; border-top: 1px #414141 solid;">
+					<strong>NAPOMENA:</strong> <?= htmlspecialchars($orderNotes) ?>
+				</div>
+			</div>
+		<?php } ?>
 		<div class="group">
 			<div style="text-align: center; padding: 15px 0px; border-top: 1px #414141 solid;">
 				<img src="data:image/png;base64,<?= isset($trackingNumber) ? $trackingNumber->barcode : $order->trackingNumber->barcode ?>" style="height: 90px; margin-top: 10px;">
