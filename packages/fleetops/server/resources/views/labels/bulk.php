@@ -127,6 +127,11 @@ $inline = array_fill_keys($profile['inline'], true);
 		display: <?= isset($inline['info']) ? 'inline' : 'block' ?>;
 	}
 
+	.label-notes {
+		margin-top: <?= $profile['gap'] ?>mm;
+		font-size: <?= $profile['base'] ?>px;
+	}
+
 	.label-date {
 		margin-top: <?= $profile['gap'] ?>mm;
 		font-size: <?= $profile['small'] ?>px;
@@ -230,6 +235,9 @@ $inline = array_fill_keys($profile['inline'], true);
 						$recipientPhone = $customFields['recipient_phone'] ?: ($dropoff ? trim((string) $dropoff->phone) : '');
 						$recipientLine  = implode(', ', array_filter([$recipientName, $recipientPhone]));
 						$createdAt     = $order->created_at ? $order->created_at->format('d.m.Y H:i') : null;
+						// Order note (orders.notes) — same field the WMS `notes`, portal "Napomena" and Excel "Napomene" write to.
+						$notes = preg_replace('/\s+/u', ' ', trim((string) $order->notes));
+						$notes = $notes !== '' ? mb_strimwidth($notes, 0, 180, '…', 'UTF-8') : '';
 						?>
 						<td class="label-cell">
 							<div class="label-inner"><div class="label-content">
@@ -297,6 +305,10 @@ $inline = array_fill_keys($profile['inline'], true);
 										<span class="info-item"><strong>Primalac:</strong> <?= htmlspecialchars($recipientLine) ?></span>
 									<?php } ?>
 								</div>
+							<?php } ?>
+
+							<?php if ($notes !== '') { ?>
+								<div class="label-notes"><strong>Napomena:</strong> <?= htmlspecialchars($notes) ?></div>
 							<?php } ?>
 
 							<?php if (!empty($createdAt)) { ?>
