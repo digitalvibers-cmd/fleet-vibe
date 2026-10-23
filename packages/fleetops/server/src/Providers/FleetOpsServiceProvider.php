@@ -67,6 +67,8 @@ class FleetOpsServiceProvider extends CoreServiceProvider
         \Fleetbase\FleetOps\Console\Commands\TestEmail::class,
         // LogiVibe: one-shot cleanup of orphan Sanctum tokens for deleted customers
         \Fleetbase\FleetOps\Console\Commands\PurgeOrphanCustomerTokens::class,
+        // LogiVibe: per-client bearer tokens for POST /v1/integrations/wms/orders
+        \Fleetbase\FleetOps\Console\Commands\WmsToken::class,
     ];
 
     /**
