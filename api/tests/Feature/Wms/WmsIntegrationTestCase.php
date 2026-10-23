@@ -8,6 +8,7 @@ use Fleetbase\FleetOps\Support\FleetOps;
 use Fleetbase\FleetOps\Support\Utils;
 use Fleetbase\Models\Company;
 use Fleetbase\Models\CustomField;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +28,12 @@ use Tests\TestCase;
  * Fixtures (company, customers) are inserted with model events disabled: the
  * contact observer would otherwise create portal users and assign Spatie roles
  * that only exist after `fleetbase:create-permissions`.
+ *
+ * The MySQL connection is opened WITHOUT PDO::ATTR_PERSISTENT (see createApplication):
+ * core-api turns persistence on, and persistent links are shared by every test
+ * application in the PHPUnit process, so a stale PDO object from an earlier test
+ * rolls the current test's transaction back when it is garbage-collected mid-test
+ * (random 404/500 with FK errors on tracking_numbers).
  */
 abstract class WmsIntegrationTestCase extends TestCase
 {
@@ -39,6 +46,24 @@ abstract class WmsIntegrationTestCase extends TestCase
     protected OrderConfig $orderConfig;
     protected Contact $customer;
     protected Contact $otherCustomer;
+
+    /**
+     * Boot the application with a non-persistent MySQL connection (see class docblock).
+     */
+    public function createApplication()
+    {
+        $app = require __DIR__ . '/../../../bootstrap/app.php';
+        $app->make(Kernel::class)->bootstrap();
+
+        $connection = $app['config']->get('database.default');
+        $options    = $app['config']->get("database.connections.{$connection}.options", []);
+        $options[\PDO::ATTR_PERSISTENT] = false;
+        $app['config']->set("database.connections.{$connection}.options", $options);
+        // Drop any connection a provider may already have opened during boot.
+        $app['db']->purge($connection);
+
+        return $app;
+    }
 
     protected function setUp(): void
     {
