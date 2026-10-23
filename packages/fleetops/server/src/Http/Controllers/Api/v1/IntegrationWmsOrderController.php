@@ -3,11 +3,13 @@
 namespace Fleetbase\FleetOps\Http\Controllers\Api\v1;
 
 use Fleetbase\FleetOps\Events\OrderReady;
+use Fleetbase\FleetOps\Http\Middleware\AuthenticateWmsIntegration;
 use Fleetbase\FleetOps\Models\Contact;
 use Fleetbase\FleetOps\Models\Order;
 use Fleetbase\FleetOps\Models\OrderConfig;
 use Fleetbase\FleetOps\Models\Payload;
 use Fleetbase\FleetOps\Models\Place;
+use Fleetbase\FleetOps\Models\WmsIntegrationToken;
 use Fleetbase\Http\Controllers\Controller;
 use Fleetbase\Models\CustomField;
 use Illuminate\Http\JsonResponse;
@@ -51,9 +53,27 @@ class IntegrationWmsOrderController extends Controller
         $input       = $validator->validated();
 
         // 1) Resolve existing customer (Contact). Do NOT create new contacts here.
-        $contact = $this->resolveCustomer($input['customer'], $companyUuid);
-        if (!$contact instanceof Contact) {
-            return response()->json(['error' => 'Customer not found.'], 404);
+        //    Per-client token (LogiVibe): the customer is the Contact the token was issued
+        //    for, and `customer.id` in the body has to agree. Shared .env token: legacy
+        //    behaviour — the customer comes from the body with no further checks.
+        $clientToken = $request->attributes->get(AuthenticateWmsIntegration::REQUEST_ATTRIBUTE);
+        if ($clientToken instanceof WmsIntegrationToken) {
+            $contact = $clientToken->resolveCustomer();
+            if (!$contact instanceof Contact) {
+                return response()->json(['error' => 'Customer not found.'], 404);
+            }
+
+            $requestedCustomerId = trim((string) ($input['customer']['id'] ?? ''));
+            if ($requestedCustomerId !== $contact->public_id) {
+                return response()->json([
+                    'error' => 'Customer does not match the integration token.',
+                ], 403);
+            }
+        } else {
+            $contact = $this->resolveCustomer($input['customer'], $companyUuid);
+            if (!$contact instanceof Contact) {
+                return response()->json(['error' => 'Customer not found.'], 404);
+            }
         }
 
         // 2) Resolve OrderConfig
@@ -128,7 +148,7 @@ class IntegrationWmsOrderController extends Controller
             $orderAttributes['internal_id'] = $input['internal_id'];
         }
         if (!empty($input['scheduled_at'])) {
-            $orderAttributes['scheduled_at'] = Carbon::parse($input['scheduled_at']);
+            $orderAttributes['scheduled_at'] = $this->parseScheduledAt($input['scheduled_at']);
         }
         if (!empty($input['notes'])) {
             $orderAttributes['notes'] = $input['notes'];
@@ -175,6 +195,26 @@ class IntegrationWmsOrderController extends Controller
                 'name' => $contact->name,
             ],
         ], 201);
+    }
+
+    /**
+     * Parse `scheduled_at` for storage.
+     *
+     * The app runs in UTC and Eloquent writes a Carbon in the zone it carries, so an
+     * input with an explicit non-zero offset (`2026-10-20T07:00:00+02:00`) used to be
+     * stored as `07:00` UTC — two hours late in the console. Only that case is
+     * converted to UTC. A string without a zone, or with `Z` / `+00:00` (what the
+     * portal Excel import sends), parses with offset 0 and is stored exactly as before.
+     */
+    private function parseScheduledAt($value): Carbon
+    {
+        $scheduledAt = Carbon::parse($value);
+
+        if ($scheduledAt->getOffset() !== 0) {
+            return $scheduledAt->utc();
+        }
+
+        return $scheduledAt;
     }
 
     private function resolveCustomer(array $customer, string $companyUuid): ?Contact
