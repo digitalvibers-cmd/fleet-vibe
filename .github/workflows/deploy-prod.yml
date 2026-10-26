@@ -12,6 +12,7 @@ name: Fleet Vibe Prod Deploy (Hetzner)
 #   - git fetch + fast-forward merge of origin/main
 #   - docker compose -f docker-compose.yml -f docker-compose.prod.yml ...
 #   - rebuild console, customer-portal, application; up -d the changed set
+#   - php artisan migrate --force inside the recreated application container
 #
 # Required repo secret (environment: production):
 #   HETZNER_DEPLOY_SSH_KEY - ed25519 private key for deploy@46.225.99.48
