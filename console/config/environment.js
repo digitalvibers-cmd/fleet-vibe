@@ -55,6 +55,13 @@ module.exports = function (environment) {
             apiKey: getenv('GOOGLE_MAPS_BROWSER_KEY', ''),
         },
 
+        mapTiler: {
+            // Browser key for MapTiler raster tiles (replaces keyless CARTO basemaps).
+            // Baked in at build time from the server .env ${MAPTILER_KEY}; restrict it
+            // by HTTP origin in the MapTiler dashboard. Empty = maps keep the CARTO URL.
+            apiKey: getenv('MAPTILER_KEY', ''),
+        },
+
         defaultValues: {
             categoryImage: getenv('DEFAULT_CATEGORY_IMAGE', 'https://flb-assets.s3.ap-southeast-1.amazonaws.com/images/fallback-placeholder-1.png'),
             placeholderImage: getenv('DEFAULT_PLACEHOLDER_IMAGE', 'https://flb-assets.s3.ap-southeast-1.amazonaws.com/static/image-file-icon.png'),

@@ -20,6 +20,11 @@ ARG ENVIRONMENT=development
 ARG GOOGLE_MAPS_BROWSER_KEY=
 ENV GOOGLE_MAPS_BROWSER_KEY=$GOOGLE_MAPS_BROWSER_KEY
 
+# MapTiler browser key for map base tiles (CARTO basemaps require an API key now).
+# Same flow as above: server .env ${MAPTILER_KEY} -> docker-compose build.args.
+ARG MAPTILER_KEY=
+ENV MAPTILER_KEY=$MAPTILER_KEY
+
 # Copy console package files first (for layer caching)
 COPY console/package.json console/pnpm-lock.yaml ./
 COPY console/.npmr[c] ./

@@ -39,6 +39,7 @@ services:
         ENVIRONMENT: production
         FLEETBASE_ENV: prod
         GOOGLE_MAPS_BROWSER_KEY: "${GOOGLE_MAPS_BROWSER_KEY}"
+        MAPTILER_KEY: "${MAPTILER_KEY:-}"
     ports:
       - "4201:4200"
     volumes:
